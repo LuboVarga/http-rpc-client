@@ -9,6 +9,7 @@ import com.netflix.ribbon.RibbonRequest;
 import com.netflix.ribbon.http.HttpRequestTemplate;
 import com.netflix.ribbon.http.HttpResourceGroup;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
 import rx.Observable;
 import rx.functions.Func1;
@@ -20,11 +21,11 @@ import java.util.concurrent.TimeUnit;
 public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private ObjectMapper mapper = new ObjectMapper();
-    private HttpResourceGroup resourceGroup;
-
+    private HttpRequestTemplate.Builder<ByteBuf> requestBuilder;
 
     public RibbonHttpClient(String servers) {
-        resourceGroup = Ribbon.createHttpResourceGroup("sample-client", config(servers));
+        HttpResourceGroup resourceGroup = Ribbon.createHttpResourceGroup("sample-client", config(servers));
+        requestBuilder = resourceGroup.newTemplateBuilder("sample-client");
     }
 
     private Func1<HttpClientResponse<ByteBuf>, Observable<T>> getContent(Class<T> clazz) {
@@ -65,13 +66,15 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     @Override
     public Future<T> send(String procedureName, R request, Class<T> clazz) {
 
-        HttpRequestTemplate.Builder<ByteBuf> builder = resourceGroup.newTemplateBuilder("sample-client");
-        HttpRequestTemplate<ByteBuf> service = builder
-                .withMethod("GET")
+
+        ByteBuf buf = Unpooled.copiedBuffer("test content".getBytes());
+
+        HttpRequestTemplate<ByteBuf> service = requestBuilder
+                .withMethod("POST")
                 .withUriTemplate("/test")
                 .build();
 
-        RibbonRequest<ByteBuf> req = service.requestBuilder().build();
+        RibbonRequest<ByteBuf> req = service.requestBuilder().withContent(Observable.just(buf)).build();
 
         return req.toObservable().map(buff -> convert(clazz, buff)).toBlocking().toFuture();
 
