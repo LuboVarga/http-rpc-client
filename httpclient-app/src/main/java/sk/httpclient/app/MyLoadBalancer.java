@@ -7,7 +7,10 @@ import java.util.List;
 
 public class MyLoadBalancer extends DynamicServerListLoadBalancer {
 
+    private static int c = 0;
+
     @Override
+
     public void addServers(List<Server> newServers) {
         System.out.println("My balancer was called");
         super.addServers(newServers);
@@ -15,9 +18,10 @@ public class MyLoadBalancer extends DynamicServerListLoadBalancer {
 
     @Override
     public Server chooseServer(Object key) {
+        c = ++c % upServerList.size();
         System.out.println("My balancer was called");
 
-        return upServerList.get(2);
+        return upServerList.get(c);
     }
 
     @Override
