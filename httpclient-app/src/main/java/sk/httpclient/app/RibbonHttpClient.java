@@ -45,18 +45,18 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private ClientOptions config(String servers) {
         IClientConfig clientConfig = IClientConfig.Builder.newBuilder("sample-client").build();
-        clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
+        //clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
         clientConfig.set(CommonClientConfigKey.InitializeNFLoadBalancer, true);
         clientConfig.set(CommonClientConfigKey.ListOfServers, servers);
-        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 4);
-        clientConfig.set(CommonClientConfigKey.MaxAutoRetries, 4);
+        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 40);
+        clientConfig.set(CommonClientConfigKey.MaxAutoRetries, 40);
         clientConfig.set(CommonClientConfigKey.EnableConnectionPool, true);
-        clientConfig.set(CommonClientConfigKey.PoolMaxThreads, 5);
-        clientConfig.set(CommonClientConfigKey.PoolMinThreads, 3);
+        clientConfig.set(CommonClientConfigKey.PoolMaxThreads, 1500);
+        clientConfig.set(CommonClientConfigKey.PoolMinThreads, 300);
         clientConfig.set(CommonClientConfigKey.PoolKeepAliveTime, 1000);
         clientConfig.set(CommonClientConfigKey.PoolKeepAliveTimeUnits, TimeUnit.SECONDS.name()); //TODO ake su tu hodnoty?
-        clientConfig.set(CommonClientConfigKey.MaxConnectionsPerHost, 5);
-        clientConfig.set(CommonClientConfigKey.MaxTotalConnections, 30);
+        clientConfig.set(CommonClientConfigKey.MaxConnectionsPerHost, 500);
+        clientConfig.set(CommonClientConfigKey.MaxTotalConnections, 300);
         clientConfig.set(CommonClientConfigKey.EnablePrimeConnections, true);
         clientConfig.set(CommonClientConfigKey.EnablePrimeConnections, true);
         return ClientOptions.from(clientConfig);

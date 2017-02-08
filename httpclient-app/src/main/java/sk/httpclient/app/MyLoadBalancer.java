@@ -17,8 +17,9 @@ public class MyLoadBalancer extends DynamicServerListLoadBalancer {
 
     @Override
     public Server chooseServer(Object key) {
-        c = ++c % upServerList.size();
-        return upServerList.get(c);
+        //c = ++c % upServerList.size();
+        //return upServerList.get(c);
+        return super.chooseServer(key);
     }
 
     @Override
