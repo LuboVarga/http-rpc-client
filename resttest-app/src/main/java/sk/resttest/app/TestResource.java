@@ -12,9 +12,9 @@ public class TestResource {
 
     @GET
     @Path("/test")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.APPLICATION_JSON)
     public String test() {
-        return "it works";
+        return "{ \"name\":\"John\", \"age\":31, \"city\":\"New York\" }";
     }
 
     @POST
