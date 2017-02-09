@@ -6,5 +6,6 @@ public class ResourceConfiguration extends ResourceConfig {
     public ResourceConfiguration() {
         packages("sk.resttest.app");
         register(TestResource.class);
+        register(ExitResource.class);
     }
 }

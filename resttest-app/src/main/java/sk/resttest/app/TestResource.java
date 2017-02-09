@@ -1,28 +1,36 @@
 package sk.resttest.app;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import java.io.InputStream;
 
 @Path("/test")
 public class TestResource {
-
-
     @GET
-    @Path("/test")
+    @Path("/record")
+    @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
     @Produces(MediaType.APPLICATION_JSON)
-    public String test() {
-        return "{ \"name\":\"John\", \"age\":31, \"city\":\"New York\" }";
+    public String json() {
+        return "{ \"name\":\"John\", \"age\":31, \"city\":\"Get New York\" }";
     }
 
     @POST
-    @Path("/")
+    @Path("/record")
+    @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
     @Produces(MediaType.APPLICATION_JSON)
-    public String test2(String data) {
-        System.out.println("Received data: " + data);
+    public String json(String data) {
+        return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";
+    }
 
-        return "{ \"name\":\"John\", \"age\":31, \"city\":\"New York\" }";
+    /**
+     * For content type discussion, have a look at http://stackoverflow.com/questions/30505408/what-is-the-correct-protobuf-content-type
+     */
+    @POST
+    @Path("/record")
+    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public String proto(InputStream is) {
+        // TODO implement correct response https://dennis-xlc.gitbooks.io/restful-java-with-jax-rs-2-0-2rd-edition/content/en/part1/chapter6/custom_marshalling.html
+        return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";
     }
 }
