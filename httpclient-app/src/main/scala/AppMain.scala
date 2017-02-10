@@ -34,21 +34,12 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
     .build
   reporter.start(5, TimeUnit.SECONDS)
 
-  case class Rec @JsonCreator()(
-                                 @JsonProperty("name")
-                                 name: String,
-                                 @JsonProperty("age")
-                                 age: Integer,
-                                 @JsonProperty("city")
-                                 city: String
-                               )
-
   def main(args: Array[String]): Unit = {
     val s = new SynchronizedSummaryStatistics()
     val p = new Percentile(95.0)
     //val r = new RibbonHttpClient[Rec, Rec]("localhost:8887,localhost:8888,localhost:8889")
 
-    val clients = (1 to 6).map(_ => new RibbonHttpClient[Rec, Rec]("localhost:8887,localhost:8888,localhost:8889")).par
+    val clients = (1 to 2).map(_ => new ControllingRibbonHttpClient[Rec, Rec]("localhost:8887,localhost:8888,localhost:8889")).par
     clients.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(50))
     val allDurations = clients.flatMap(r => {
       println("Going to do warm-up.")
@@ -58,6 +49,9 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
       //a.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(10))
 
       val durations = a.map(i => {
+        if(i%223 == 0) {
+          r.overload
+        }
         val start = System.nanoTime()
         val o = httpRpc.time {
           Try{

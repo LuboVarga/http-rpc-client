@@ -18,26 +18,6 @@ import java.util.concurrent.TimeUnit;
 
 public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
-    public final String PORCEDURE_getRecord = "/test/record";
-    public final String PORCEDURE_control = "/test/control";
-
-    /**
-     * Simulate deploy. Reboot server. Its starter (run[789].sh script) will restart it after 30 seconds.
-     */
-    public final String CONTROL_DEPLOY = "1";
-    /**
-     * Server start responding by exception to all "/test/record" requests.
-     */
-    public final String CONTROL_DB_DOWN = "2";
-    /**
-     * Responses (also exceptional one) are given after 18 seconds of sleep.
-     */
-    public final String CONTROL_OVERLOAD = "3";
-    /**
-     * Make server responding OK. Without delay and with proper content/status code.
-     */
-    public final String CONTROL_OK = "4";
-
     private final ObjectMapper mapperDefault = new ObjectMapper();
     // private final ObjectMapper mapperProto = new ObjectMapper(new ProtobufFactory());
     public HttpResourceGroup resourceGroup;
@@ -102,6 +82,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     @Override
     public Future<T> send(String procedureName, R request, Class<T> clazz) {
+        // TODO implement using procedure name as path and request as body...
         return req.toObservable()
             .map(buff -> convert(clazz, buff))
             .doOnError(throwable -> {

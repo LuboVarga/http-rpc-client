@@ -1,11 +1,16 @@
 package sk.resttest.app;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.io.InputStream;
 
 @Path("/test")
 public class TestResource {
+    private final Logger LOG = LoggerFactory.getLogger(TestResource.class);
+
     private long sleepTime = 0;
     private boolean throwException = false;
 
@@ -40,26 +45,41 @@ public class TestResource {
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";
     }
 
-    @POST
     @GET
     @Path("/control")
     @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN, MediaType.APPLICATION_OCTET_STREAM})
     @Produces(MediaType.APPLICATION_JSON)
+    public String controlGet(String data) {
+        return this.control(data);
+    }
+
+    @POST
+    @Path("/control")
+    @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN, MediaType.APPLICATION_OCTET_STREAM})
+    @Produces(MediaType.APPLICATION_JSON)
+    public String controlPost(String data) {
+        return this.control(data);
+    }
+
     public String control(String data) {
         if (data.contains("4")) {
             this.sleepTime = 0;
             this.throwException = false;
+            LOG.info("control is going to 4. All ok state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"ALL OK\" }";
         }
         if (data.contains("3")) {
             this.sleepTime = 18000;
+            LOG.info("control is going to 3. Overload state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"TIMEOUT SIMULATION\" }";
         }
         if (data.contains("2")) {
             this.throwException = true;
+            LOG.info("control is going to 2. DB down state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"PROCESSING EXCEPTION SIMULATION\" }";
         }
         if (data.contains("1")) {
+            LOG.info("control is going to 1. Restart (simulated deploy) state.");
             new Thread(() -> {
                 try {
                     Thread.sleep(42);
@@ -77,14 +97,14 @@ public class TestResource {
      * Optionally make sleep (simulates service overload) and than optionally throw exception (simulates database down).
      */
     private void currentBehavior() {
-        if(this.sleepTime != 0) {
+        if (this.sleepTime != 0) {
             try {
                 Thread.sleep(this.sleepTime);
             } catch (InterruptedException e) {
                 throw new RuntimeException("Interrupted in currentBehavior! ", e);
             }
         }
-        if(this.throwException == true) {
+        if (this.throwException == true) {
             throw new RuntimeException("Some bad exception during fulfilling request happened. This should be simulation of database request failed or so.");
         }
     }
