@@ -111,6 +111,5 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 System.out.println("nepreslo: " + e.getMessage());
             }
         }
-        // TODO hystrix spojit s codahhale metrics registry a cez console reporter vypisovat. Cielom je zistit, ktory circuit breaker sa otvoril...
     }
 }
