@@ -62,11 +62,11 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private ClientOptions config(String servers) {
         IClientConfig clientConfig = IClientConfig.Builder.newBuilder("sample-client").build();
-        clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
+        //clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
         clientConfig.set(CommonClientConfigKey.InitializeNFLoadBalancer, true);
         clientConfig.set(CommonClientConfigKey.ListOfServers, servers);
-        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 400);
-        clientConfig.set(CommonClientConfigKey.MaxAutoRetries, 400);
+        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 1);
+        clientConfig.set(CommonClientConfigKey.MaxAutoRetries, 1);
         clientConfig.set(CommonClientConfigKey.EnableConnectionPool, true);
         clientConfig.set(CommonClientConfigKey.PoolMaxThreads, 50);
         clientConfig.set(CommonClientConfigKey.PoolMinThreads, 42);
@@ -100,7 +100,6 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         HttpRequestTemplate<ByteBuf> recommendationsByUserIdTemplate = httpResourceGroup.newTemplateBuilder("recommendationsByUserId", ByteBuf.class)
             .withMethod("POST")
             .withUriTemplate("/test/record")
-
             .build();
         for (int i = 0; i < 500; i++) {
             try {
