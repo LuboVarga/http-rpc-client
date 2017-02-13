@@ -15,9 +15,12 @@ import com.netflix.ribbon.http.HttpResourceGroup;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import rx.Observable;
 import rx.functions.Func1;
 
+import java.net.ConnectException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -86,8 +89,17 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
 
     @Override
+    @SuppressWarnings("unchecked")
     public Future<T> send(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
 
+        RetryPolicy retryPolicy = new RetryPolicy()
+                .retryOn(ConnectException.class)
+                .withDelay(1, TimeUnit.SECONDS);
+
+        return Failsafe.with(retryPolicy).get(() -> sendInternal(procedureName, request, clazz));
+    }
+
+    private Future<T> sendInternal(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
         HystrixCommandGroupKey key = HystrixCommandGroupKey.Factory.asKey(NAME);
 
         HttpRequestTemplate<ByteBuf> service = builder
@@ -112,25 +124,4 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         return Observable.just(buf);
     }
 
-    // minimal testing code with Tomas
-    public static void main(String[] args) {
-        HttpResourceGroup httpResourceGroup = Ribbon.createHttpResourceGroup("movieServiceClient",
-                ClientOptions.create()
-                        .withMaxAutoRetriesNextServer(0)
-                        .withConfigurationBasedServerList("localhost:8889,localhost:8888,localhost:8887"));
-        HttpRequestTemplate<ByteBuf> recommendationsByUserIdTemplate = httpResourceGroup.newTemplateBuilder("recommendationsByUserId", ByteBuf.class)
-                .withMethod("POST")
-                .withUriTemplate("/test/record")
-                .build();
-        for (int i = 0; i < 500; i++) {
-            try {
-                final String x = recommendationsByUserIdTemplate.requestBuilder()
-                        .build()
-                        .execute().toString();
-                System.out.println(x);
-            } catch (Exception e) {
-                System.out.println("nepreslo: " + e.getMessage());
-            }
-        }
-    }
 }

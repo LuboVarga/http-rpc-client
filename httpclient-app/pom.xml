@@ -147,6 +147,12 @@
             <artifactId>hystrix-codahale-metrics-publisher</artifactId>
             <version>1.5.6</version>
         </dependency>
+        <dependency>
+            <groupId>net.jodah</groupId>
+            <artifactId>failsafe</artifactId>
+            <version>1.0.3</version>
+        </dependency>
+
     </dependencies>
 
     <build>
