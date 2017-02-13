@@ -1,47 +1,40 @@
 package sk.httpclient.app;
 
-import com.netflix.loadbalancer.ILoadBalancer;
 import com.netflix.loadbalancer.Server;
+import com.netflix.loadbalancer.ZoneAwareLoadBalancer;
 
 import java.util.List;
 
-public class MyLoadBalancer implements ILoadBalancer {
-    private int c = 0;
-
+public class MyLoadBalancer extends ZoneAwareLoadBalancer {
     @Override
-
     public void addServers(List<Server> newServers) {
-        //super.addServers(newServers);
+        super.addServers(newServers);
     }
-
-    private final Server[] a = new Server[]{
-        new Server("localhost", 8887),
-        new Server("localhost", 8888),
-        new Server("localhost", 8889)
-    };
 
     @Override
     public Server chooseServer(Object key) {
-        c = ++c % 3;
-        return a[c];
+        Server server = super.chooseServer(key);
+        System.out.println("choosing: " + (server == null ? "server is null " : server.getPort()));
+        return server;
     }
 
     @Override
     public void markServerDown(Server server) {
+        super.markServerDown(server);
     }
 
     @Override
     public List<Server> getServerList(boolean availableOnly) {
-        return null;
+        return super.getServerList(availableOnly);
     }
 
     @Override
     public List<Server> getReachableServers() {
-        return null;
+        return super.getReachableServers();
     }
 
     @Override
     public List<Server> getAllServers() {
-        return null;
+        return super.getAllServers();
     }
 }

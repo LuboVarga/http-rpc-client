@@ -6,11 +6,12 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Path("/test")
 public class TestResource {
     private final Logger LOG = LoggerFactory.getLogger(TestResource.class);
-
+    static AtomicInteger counter = new AtomicInteger(0);
     private long sleepTime = 0;
     private boolean throwException = false;
 
@@ -19,6 +20,8 @@ public class TestResource {
     @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
     @Produces(MediaType.APPLICATION_JSON)
     public String json() {
+        System.out.println("received: get");
+
         currentRecordBehavior();
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Get New York\" }";
     }
@@ -28,7 +31,7 @@ public class TestResource {
     @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
     @Produces(MediaType.APPLICATION_JSON)
     public String json(String data) {
-        System.out.println("received: " + data);
+        System.out.println("received: " + data + " count: " + counter.incrementAndGet());
         currentRecordBehavior();
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";
     }
@@ -41,6 +44,8 @@ public class TestResource {
     @Consumes(MediaType.APPLICATION_OCTET_STREAM)
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public String proto(InputStream is) {
+        System.out.println("received: octet");
+
         currentRecordBehavior();
         // TODO implement correct response https://dennis-xlc.gitbooks.io/restful-java-with-jax-rs-2-0-2rd-edition/content/en/part1/chapter6/custom_marshalling.html
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";

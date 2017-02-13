@@ -71,7 +71,8 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private ClientOptions config(String servers) {
         IClientConfig clientConfig = IClientConfig.Builder.newBuilder("sample-client").build();
-        //clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
+
+        clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
         clientConfig.set(CommonClientConfigKey.InitializeNFLoadBalancer, true);
         clientConfig.set(CommonClientConfigKey.ListOfServers, servers);
         clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 0);
@@ -95,12 +96,12 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         return Failsafe.with(retryPolicy).get(() -> sendInternal(procedureName, request, clazz));
     }
 
-    private HystrixCommandProperties.Setter aaaa() {
-        return HystrixCommandProperties.Setter().
-                withExecutionTimeoutInMilliseconds(10000)
-                .withCircuitBreakerEnabled(true)
-                .withCircuitBreakerErrorThresholdPercentage(3)
-                .withMetricsRollingPercentileEnabled(true);
+    private HystrixCommandProperties.Setter hystrixSettings() {
+        return HystrixCommandProperties.Setter()
+                //.withExecutionTimeoutInMilliseconds(10000)
+                .withCircuitBreakerEnabled(false)
+                .withCircuitBreakerErrorThresholdPercentage(80)
+                .withMetricsRollingPercentileEnabled(false);
     }
 
     private Future<T> sendInternal(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
@@ -126,8 +127,8 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     private HystrixObservableCommand.Setter getHystrixSetter(String procedureName) {
         return HystrixObservableCommand.Setter.
                 withGroupKey(key).
-                andCommandKey(HystrixCommandKey.Factory.asKey(procedureName)).
-                andCommandPropertiesDefaults(aaaa());
+                andCommandKey(HystrixCommandKey.Factory.asKey(procedureName));
+        //andCommandPropertiesDefaults(hystrixSettings());
     }
 
     private ResponseValidator<HttpClientResponse<ByteBuf>> getValidator(final String procedureName) {
