@@ -1,13 +1,11 @@
 import java.util.concurrent.TimeUnit
 
 import com.codahale.metrics.{ConsoleReporter, Metric}
-import com.fasterxml.jackson.annotation.{JsonCreator, JsonProperty}
 import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher
 import com.netflix.hystrix.strategy.HystrixPlugins
 import nl.grons.metrics.scala.Implicits.functionToMetricFilter
 import org.apache.commons.math3.stat.descriptive.SynchronizedSummaryStatistics
 import org.apache.commons.math3.stat.descriptive.rank.Percentile
-import sk.httpclient.app.RibbonHttpClient
 
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.Try
@@ -22,8 +20,10 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
   private val httpRpc = metrics.timer("http-rpc")
 
   val interestingMetrics = Seq(
-    "countEmit", "countExceptionsThrown", "countFailure", "countFallbackMissing", "countShortCircuited",
-    "countSuccess", "rollingCountEmit", "rollingCountSuccess", "isCircuitBreakerOpen", "http-rpc"
+    "countEmit"
+    //, "countExceptionsThrown", "countFailure", "countFallbackMissing", "countShortCircuited",
+    //"countSuccess", "rollingCountEmit", "rollingCountSuccess", "isCircuitBreakerOpen",
+    , "http-rpc"
   )
 
   val reporter: ConsoleReporter = ConsoleReporter
@@ -39,23 +39,27 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
     val p = new Percentile(95.0)
     //val r = new RibbonHttpClient[Rec, Rec]("localhost:8887,localhost:8888,localhost:8889")
 
-    val clients = (1 to 2).map(_ => new ControllingRibbonHttpClient[Rec, Rec]("localhost:8887,localhost:8888,localhost:8889")).par
+    val clients = (1 to 1).map(_ => new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8887,http://localhost:8888,http://localhost:8889")).par
     clients.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(50))
     val allDurations = clients.flatMap(r => {
       println("Going to do warm-up.")
-      (1 to 200).foreach(i => r.send("aaa", new Rec("", i, ""), classOf[Rec]).get)
+      (1 to 200).foreach(i => r.send(r.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get)
 
-      val a = (1 to 1000) //.par
-      //a.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(10))
+      val a = (1 to 2000).par
+      a.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(4))
 
       val durations = a.map(i => {
-        if(i%223 == 0) {
-          r.overload
+        if (i == 223) {
+          r.deploy
         }
         val start = System.nanoTime()
         val o = httpRpc.time {
-          Try{
-            r.send("aaa", new Rec("", i, ""), classOf[Rec]).get
+          Try {
+            if (i % 2 == 0) {
+              r.send(r.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get
+            } else {
+              r.send(r.PORCEDURE_makeCall, new Rec("CALL", i, "LLAC"), classOf[Rec]).get
+            }
           }.toOption
         }
         val end = System.nanoTime()
@@ -63,7 +67,7 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
         //println(s"Result of call: ${o.city}; duration: ${duration}ms.")
         print(o.map(_ => {
           val d = Math.round(Math.log(duration + 1)) + ""
-          if(d.length != 1) {
+          if (d.length != 1) {
             " " + duration + " "
           } else {
             d

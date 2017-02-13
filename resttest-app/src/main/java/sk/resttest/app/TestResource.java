@@ -19,7 +19,7 @@ public class TestResource {
     @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
     @Produces(MediaType.APPLICATION_JSON)
     public String json() {
-        currentBehavior();
+        currentRecordBehavior();
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Get New York\" }";
     }
 
@@ -29,7 +29,7 @@ public class TestResource {
     @Produces(MediaType.APPLICATION_JSON)
     public String json(String data) {
         System.out.println("received: " + data);
-        currentBehavior();
+        currentRecordBehavior();
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";
     }
 
@@ -41,9 +41,19 @@ public class TestResource {
     @Consumes(MediaType.APPLICATION_OCTET_STREAM)
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public String proto(InputStream is) {
-        currentBehavior();
+        currentRecordBehavior();
         // TODO implement correct response https://dennis-xlc.gitbooks.io/restful-java-with-jax-rs-2-0-2rd-edition/content/en/part1/chapter6/custom_marshalling.html
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";
+    }
+
+
+    @POST
+    @Path("/call")
+    @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
+    @Produces(MediaType.APPLICATION_JSON)
+    public String jsonCall(String data) {
+        System.out.println("received call: " + data);
+        return "{ \"name\":\"Cyril\", \"age\":22, \"city\":\"soap call\" }";
     }
 
     @GET
@@ -83,7 +93,7 @@ public class TestResource {
             LOG.info("control is going to 1. Restart (simulated deploy) state.");
             new Thread(() -> {
                 try {
-                    Thread.sleep(42);
+                    Thread.sleep(242);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -97,15 +107,17 @@ public class TestResource {
     /**
      * Optionally make sleep (simulates service overload) and than optionally throw exception (simulates database down).
      */
-    private void currentBehavior() {
+    private void currentRecordBehavior() {
         if (this.sleepTime != 0) {
+            System.out.println("this.sleepTime=" + this.sleepTime);
             try {
                 Thread.sleep(this.sleepTime);
             } catch (InterruptedException e) {
-                throw new RuntimeException("Interrupted in currentBehavior! ", e);
+                throw new RuntimeException("Interrupted in currentRecordBehavior! ", e);
             }
         }
         if (this.throwException == true) {
+            System.out.println("this.throwException=" + this.throwException);
             throw new RuntimeException("Some bad exception during fulfilling request happened. This should be simulation of database request failed or so.");
         }
     }
