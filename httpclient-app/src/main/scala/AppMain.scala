@@ -20,8 +20,10 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
   private val httpRpc = metrics.timer("http-rpc")
 
   val interestingMetrics = Seq(
-    "countEmit", "countExceptionsThrown", "countFailure", "countFallbackMissing", "countShortCircuited",
-    "countSuccess", "rollingCountEmit", "rollingCountSuccess", "isCircuitBreakerOpen", "http-rpc"
+    "countEmit"
+    //, "countExceptionsThrown", "countFailure", "countFallbackMissing", "countShortCircuited",
+    //"countSuccess", "rollingCountEmit", "rollingCountSuccess", "isCircuitBreakerOpen",
+    , "http-rpc"
   )
 
   val reporter: ConsoleReporter = ConsoleReporter
@@ -41,9 +43,9 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
     clients.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(50))
     val allDurations = clients.flatMap(r => {
       println("Going to do warm-up.")
-      (1 to 200).foreach(i => r.send("/test/record", new Rec("", i, ""), classOf[Rec]).get)
+      (1 to 200).foreach(i => r.send(r.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get)
 
-      val a = (1 to 1000).par
+      val a = (1 to 2000).par
       a.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(4))
 
       val durations = a.map(i => {
@@ -53,7 +55,11 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
         val start = System.nanoTime()
         val o = httpRpc.time {
           Try {
-            r.send("/test/record", new Rec("", i, ""), classOf[Rec]).get
+            if (i % 2 == 0) {
+              r.send(r.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get
+            } else {
+              r.send(r.PORCEDURE_makeCall, new Rec("CALL", i, "LLAC"), classOf[Rec]).get
+            }
           }.toOption
         }
         val end = System.nanoTime()

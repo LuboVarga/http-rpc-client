@@ -11,6 +11,7 @@ class ControllingRibbonHttpClient[R, T](servers: String) extends RibbonHttpClien
   val controlClient = new RibbonHttpClient[String, String](servers)
 
   val PORCEDURE_getRecord = "/test/record"
+  val PORCEDURE_makeCall = "/test/call"
   val PORCEDURE_control = "/test/control"
   /**
     * Simulate deploy. Reboot server. Its starter (run[789].sh script) will restart it after 30 seconds.
