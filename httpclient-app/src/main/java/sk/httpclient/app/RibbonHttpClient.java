@@ -9,9 +9,7 @@ import com.netflix.client.config.IClientConfig;
 import com.netflix.hystrix.HystrixCommandGroupKey;
 import com.netflix.hystrix.HystrixCommandKey;
 import com.netflix.hystrix.HystrixObservableCommand;
-import com.netflix.ribbon.ClientOptions;
-import com.netflix.ribbon.Ribbon;
-import com.netflix.ribbon.RibbonRequest;
+import com.netflix.ribbon.*;
 import com.netflix.ribbon.http.HttpRequestTemplate;
 import com.netflix.ribbon.http.HttpResourceGroup;
 import io.netty.buffer.ByteBuf;
@@ -28,11 +26,14 @@ import java.util.concurrent.TimeUnit;
 
 public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
-    public static final String NAME = "sample-client";
+    private static final String NAME = "sample-client";
     private final ObjectMapper mapperDefault = new ObjectMapper();
-    //    HttpRequestTemplate<ByteBuf> service;
-//    RibbonRequest<ByteBuf> req;
     private HttpRequestTemplate.Builder<ByteBuf> builder;
+    private RetryPolicy retryPolicy = new RetryPolicy()
+            .retryOn(ConnectException.class)
+            .withDelay(500, TimeUnit.MILLISECONDS);
+
+    private HystrixCommandGroupKey key = HystrixCommandGroupKey.Factory.asKey(NAME);
 
     public RibbonHttpClient(String servers) {
         mapperDefault.registerModule(new ParameterNamesModule());
@@ -41,16 +42,6 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
         HttpResourceGroup resourceGroup = Ribbon.createHttpResourceGroup(NAME, config(servers));
         builder = resourceGroup.newTemplateBuilder("sample-client");
-//        service = builder
-//                .withMethod("GET")
-//                .withUriTemplate("/test/record")
-//                //.withUriTemplate("/problems/systemExit")
-//                //.withUriTemplate("/problems/stackOverflow")
-//                //.withUriTemplate("/problems/runtimeException")
-//                //.withHystrixProperties(com.netflix.hystrix.HystrixObservableCommand.Setter.withGroupKey())
-//                .build();
-//        req = service.requestBuilder().build();
-
     }
 
     private Func1<HttpClientResponse<ByteBuf>, Observable<T>> getContent(Class<T> clazz) {
@@ -58,7 +49,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     }
 
     private T convert(Class<T> clazz, ByteBuf buf) {
-        if(clazz.equals(String.class)) {
+        if (clazz.equals(String.class)) {
             return (T) new String(buf.array());
         }
         try {
@@ -100,19 +91,14 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     @Override
     @SuppressWarnings("unchecked")
     public Future<T> send(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(ConnectException.class)
-                .withDelay(1, TimeUnit.SECONDS);
-
         return Failsafe.with(retryPolicy).get(() -> sendInternal(procedureName, request, clazz));
     }
 
     private Future<T> sendInternal(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-        HystrixCommandGroupKey key = HystrixCommandGroupKey.Factory.asKey(NAME);
 
         HttpRequestTemplate<ByteBuf> service = builder
                 .withMethod("POST")
+                .withResponseValidator(getValidator(procedureName))
                 .withHystrixProperties(HystrixObservableCommand.Setter.withGroupKey(key).andCommandKey(HystrixCommandKey.Factory.asKey(procedureName))) //TODO maybe cache?
                 .withUriTemplate(procedureName)
                 .build();
@@ -126,6 +112,14 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 })
                 .toBlocking()
                 .toFuture();
+    }
+
+    private ResponseValidator<HttpClientResponse<ByteBuf>> getValidator(final String procedureName) {
+        return response -> {
+            if (response.getStatus().code() < 200 || response.getStatus().code() > 299) {
+                throw new ServerError("Server error with procedure name: " + procedureName + " status: " + response.getStatus().code() + " reason: " + response.getStatus().reasonPhrase());
+            }
+        };
     }
 
     private Observable<ByteBuf> toJson(R request) throws JsonProcessingException {
