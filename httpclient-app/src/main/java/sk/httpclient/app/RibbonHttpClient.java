@@ -2,6 +2,8 @@ package sk.httpclient.app;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.netflix.client.config.CommonClientConfigKey;
 import com.netflix.client.config.IClientConfig;
 import com.netflix.ribbon.ClientOptions;
@@ -26,6 +28,10 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     private HttpRequestTemplate.Builder<ByteBuf> builder;
 
     public RibbonHttpClient(String servers) {
+        mapperDefault.registerModule(new ParameterNamesModule());
+        mapperDefault.registerModule(new Jdk8Module());
+        //mapperDefault.registerModule(new JavaTimeModule());
+
         HttpResourceGroup resourceGroup = Ribbon.createHttpResourceGroup("sample-client", config(servers));
         builder = resourceGroup.newTemplateBuilder("sample-client");
 //        service = builder
@@ -45,6 +51,9 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     }
 
     private T convert(Class<T> clazz, ByteBuf buf) {
+        if(clazz.equals(String.class)) {
+            return (T) new String(buf.array());
+        }
         try {
             byte[] bytes = new byte[buf.readableBytes()];
             buf.readBytes(bytes);
@@ -66,7 +75,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         //clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
         clientConfig.set(CommonClientConfigKey.InitializeNFLoadBalancer, true);
         clientConfig.set(CommonClientConfigKey.ListOfServers, servers);
-        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 1);
+        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 0);
         clientConfig.set(CommonClientConfigKey.MaxAutoRetries, 1);
         clientConfig.set(CommonClientConfigKey.EnableConnectionPool, true);
         clientConfig.set(CommonClientConfigKey.PoolMaxThreads, 50);

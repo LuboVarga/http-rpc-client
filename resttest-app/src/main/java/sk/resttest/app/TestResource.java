@@ -99,6 +99,7 @@ public class TestResource {
      */
     private void currentBehavior() {
         if (this.sleepTime != 0) {
+            System.out.println("this.sleepTime=" + this.sleepTime);
             try {
                 Thread.sleep(this.sleepTime);
             } catch (InterruptedException e) {
@@ -106,6 +107,7 @@ public class TestResource {
             }
         }
         if (this.throwException == true) {
+            System.out.println("this.throwException=" + this.throwException);
             throw new RuntimeException("Some bad exception during fulfilling request happened. This should be simulation of database request failed or so.");
         }
     }
