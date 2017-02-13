@@ -54,13 +54,12 @@ public class App {
         for (int i = 0; i < REQUESTSINSINGLERUN; i++) {
             long start = System.nanoTime();
             try (Timer.Context ctx = timer.time()) {
-                //  long startTime = System.nanoTime();
-                Future<Record> aaa = r.send("/test", null, Record.class);
+                Future<Record> aaa = r.send("/test/record", new Record(), Record.class);
                 Record o = aaa.get();
             } catch (Exception ex) {
                 System.out.println("RPC call failed. ex=" + ex.getMessage());
             }
-            s.addValue((System.nanoTime()-start)/1000000.0);
+            s.addValue((System.nanoTime() - start) / 1000000.0);
             if (DOSLEEP) {
                 Thread.sleep(50);
             }

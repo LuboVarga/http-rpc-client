@@ -1,5 +1,6 @@
 package sk.httpclient.app;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.client.config.CommonClientConfigKey;
 import com.netflix.client.config.IClientConfig;
@@ -9,6 +10,7 @@ import com.netflix.ribbon.RibbonRequest;
 import com.netflix.ribbon.http.HttpRequestTemplate;
 import com.netflix.ribbon.http.HttpResourceGroup;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
 import rx.Observable;
 import rx.functions.Func1;
@@ -19,23 +21,22 @@ import java.util.concurrent.TimeUnit;
 public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private final ObjectMapper mapperDefault = new ObjectMapper();
-    // private final ObjectMapper mapperProto = new ObjectMapper(new ProtobufFactory());
-    public HttpResourceGroup resourceGroup;
-    HttpRequestTemplate<ByteBuf> service;
-    RibbonRequest<ByteBuf> req;
+    //    HttpRequestTemplate<ByteBuf> service;
+//    RibbonRequest<ByteBuf> req;
+    private HttpRequestTemplate.Builder<ByteBuf> builder;
 
     public RibbonHttpClient(String servers) {
-        resourceGroup = Ribbon.createHttpResourceGroup("sample-client", config(servers));
-        HttpRequestTemplate.Builder<ByteBuf> builder = resourceGroup.newTemplateBuilder("sample-client");
-        service = builder
-            .withMethod("GET")
-            .withUriTemplate("/test/record")
-            //.withUriTemplate("/problems/systemExit")
-            //.withUriTemplate("/problems/stackOverflow")
-            //.withUriTemplate("/problems/runtimeException")
-            //.withHystrixProperties(com.netflix.hystrix.HystrixObservableCommand.Setter.withGroupKey())
-            .build();
-        req = service.requestBuilder().build();
+        HttpResourceGroup resourceGroup = Ribbon.createHttpResourceGroup("sample-client", config(servers));
+        builder = resourceGroup.newTemplateBuilder("sample-client");
+//        service = builder
+//                .withMethod("GET")
+//                .withUriTemplate("/test/record")
+//                //.withUriTemplate("/problems/systemExit")
+//                //.withUriTemplate("/problems/stackOverflow")
+//                //.withUriTemplate("/problems/runtimeException")
+//                //.withHystrixProperties(com.netflix.hystrix.HystrixObservableCommand.Setter.withGroupKey())
+//                .build();
+//        req = service.requestBuilder().build();
 
     }
 
@@ -81,32 +82,43 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
 
     @Override
-    public Future<T> send(String procedureName, R request, Class<T> clazz) {
-        // TODO implement using procedure name as path and request as body...
+    public Future<T> send(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+        HttpRequestTemplate<ByteBuf> service = builder
+                .withMethod("POST")
+                .withUriTemplate(procedureName)
+                .build();
+
+        RibbonRequest<ByteBuf> req = service.requestBuilder().withContent(toJson(request)).build();
+
         return req.toObservable()
-            .map(buff -> convert(clazz, buff))
-            .doOnError(throwable -> {
-                throw new RuntimeException("Error while doing RPC!", throwable);
-            })
-            .toBlocking()
-            .toFuture();
+                .map(buff -> convert(clazz, buff))
+                .doOnError(throwable -> {
+                    throw new RuntimeException("Error while doing RPC!", throwable);
+                })
+                .toBlocking()
+                .toFuture();
+    }
+
+    private Observable<ByteBuf> toJson(R request) throws JsonProcessingException {
+        ByteBuf buf = Unpooled.copiedBuffer(mapperDefault.writeValueAsString(request).getBytes());
+        return Observable.just(buf);
     }
 
     // minimal testing code with Tomas
     public static void main(String[] args) {
         HttpResourceGroup httpResourceGroup = Ribbon.createHttpResourceGroup("movieServiceClient",
-            ClientOptions.create()
-                .withMaxAutoRetriesNextServer(0)
-                .withConfigurationBasedServerList("localhost:8889,localhost:8888,localhost:8887"));
+                ClientOptions.create()
+                        .withMaxAutoRetriesNextServer(0)
+                        .withConfigurationBasedServerList("localhost:8889,localhost:8888,localhost:8887"));
         HttpRequestTemplate<ByteBuf> recommendationsByUserIdTemplate = httpResourceGroup.newTemplateBuilder("recommendationsByUserId", ByteBuf.class)
-            .withMethod("POST")
-            .withUriTemplate("/test/record")
-            .build();
+                .withMethod("POST")
+                .withUriTemplate("/test/record")
+                .build();
         for (int i = 0; i < 500; i++) {
             try {
                 final String x = recommendationsByUserIdTemplate.requestBuilder()
-                    .build()
-                    .execute().toString();
+                        .build()
+                        .execute().toString();
                 System.out.println(x);
             } catch (Exception e) {
                 System.out.println("nepreslo: " + e.getMessage());

@@ -28,6 +28,7 @@ public class TestResource {
     @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
     @Produces(MediaType.APPLICATION_JSON)
     public String json(String data) {
+        System.out.println("received: " + data);
         currentBehavior();
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";
     }

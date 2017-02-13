@@ -1,9 +1,9 @@
 package sk.httpclient.app;
 
 public class Record {
-    private String name;
-    private Integer age;
-    private String city;
+    private String name = "defaultName";
+    private Integer age = 31;
+    private String city = "default city";
 
     public String getName() {
         return name;
