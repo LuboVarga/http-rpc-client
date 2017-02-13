@@ -8,6 +8,7 @@ import com.netflix.client.config.CommonClientConfigKey;
 import com.netflix.client.config.IClientConfig;
 import com.netflix.hystrix.HystrixCommandGroupKey;
 import com.netflix.hystrix.HystrixCommandKey;
+import com.netflix.hystrix.HystrixCommandProperties;
 import com.netflix.hystrix.HystrixObservableCommand;
 import com.netflix.ribbon.*;
 import com.netflix.ribbon.http.HttpRequestTemplate;
@@ -78,11 +79,11 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         clientConfig.set(CommonClientConfigKey.EnableConnectionPool, true);
         clientConfig.set(CommonClientConfigKey.PoolMaxThreads, 50);
         clientConfig.set(CommonClientConfigKey.PoolMinThreads, 42);
+        clientConfig.set(CommonClientConfigKey.NFLoadBalancerPingClassName, "sk.httpclient.app.MyPinger");
         clientConfig.set(CommonClientConfigKey.PoolKeepAliveTime, 100000000);
         clientConfig.set(CommonClientConfigKey.PoolKeepAliveTimeUnits, TimeUnit.SECONDS.toString()); //TODO ake su tu hodnoty?
         clientConfig.set(CommonClientConfigKey.MaxConnectionsPerHost, 20);
         clientConfig.set(CommonClientConfigKey.MaxTotalConnections, 70);
-        clientConfig.set(CommonClientConfigKey.EnablePrimeConnections, true);
         clientConfig.set(CommonClientConfigKey.EnablePrimeConnections, true);
         return ClientOptions.from(clientConfig);
     }
@@ -94,12 +95,20 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         return Failsafe.with(retryPolicy).get(() -> sendInternal(procedureName, request, clazz));
     }
 
+    private HystrixCommandProperties.Setter aaaa() {
+        return HystrixCommandProperties.Setter().
+                withExecutionTimeoutInMilliseconds(10000)
+                .withCircuitBreakerEnabled(true)
+                .withCircuitBreakerErrorThresholdPercentage(3)
+                .withMetricsRollingPercentileEnabled(true);
+    }
+
     private Future<T> sendInternal(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
 
         HttpRequestTemplate<ByteBuf> service = builder
                 .withMethod("POST")
                 .withResponseValidator(getValidator(procedureName))
-                .withHystrixProperties(HystrixObservableCommand.Setter.withGroupKey(key).andCommandKey(HystrixCommandKey.Factory.asKey(procedureName))) //TODO maybe cache?
+                .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
                 .withUriTemplate(procedureName)
                 .build();
 
@@ -112,6 +121,13 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 })
                 .toBlocking()
                 .toFuture();
+    }
+
+    private HystrixObservableCommand.Setter getHystrixSetter(String procedureName) {
+        return HystrixObservableCommand.Setter.
+                withGroupKey(key).
+                andCommandKey(HystrixCommandKey.Factory.asKey(procedureName)).
+                andCommandPropertiesDefaults(aaaa());
     }
 
     private ResponseValidator<HttpClientResponse<ByteBuf>> getValidator(final String procedureName) {

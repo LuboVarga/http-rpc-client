@@ -20,10 +20,13 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
   private val httpRpc = metrics.timer("http-rpc")
 
   val interestingMetrics = Seq(
-    "countEmit"
-    //, "countExceptionsThrown", "countFailure", "countFallbackMissing", "countShortCircuited",
+    "countEmit",
+    //, "countExceptionsThrown", "countFailure", "countFallbackMissing",
+    "countShortCircuited",
+    "s",
     //"countSuccess", "rollingCountEmit", "rollingCountSuccess", "isCircuitBreakerOpen",
-    , "http-rpc"
+    "isCircuitBreakerOpen",
+    "http-rpc"
   )
 
   val reporter: ConsoleReporter = ConsoleReporter
@@ -50,6 +53,9 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
 
       val durations = a.map(i => {
         if (i == 223) {
+          println("deploy at 223")
+          r.deploy
+          r.deploy
           r.deploy
         }
         val start = System.nanoTime()
