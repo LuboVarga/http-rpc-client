@@ -83,7 +83,7 @@ public class TestResource {
             LOG.info("control is going to 1. Restart (simulated deploy) state.");
             new Thread(() -> {
                 try {
-                    Thread.sleep(42);
+                    Thread.sleep(242);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

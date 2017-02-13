@@ -6,6 +6,9 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.netflix.client.config.CommonClientConfigKey;
 import com.netflix.client.config.IClientConfig;
+import com.netflix.hystrix.HystrixCommandGroupKey;
+import com.netflix.hystrix.HystrixCommandKey;
+import com.netflix.hystrix.HystrixObservableCommand;
 import com.netflix.ribbon.ClientOptions;
 import com.netflix.ribbon.Ribbon;
 import com.netflix.ribbon.RibbonRequest;
@@ -22,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
+    public static final String NAME = "sample-client";
     private final ObjectMapper mapperDefault = new ObjectMapper();
     //    HttpRequestTemplate<ByteBuf> service;
 //    RibbonRequest<ByteBuf> req;
@@ -32,7 +36,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         mapperDefault.registerModule(new Jdk8Module());
         //mapperDefault.registerModule(new JavaTimeModule());
 
-        HttpResourceGroup resourceGroup = Ribbon.createHttpResourceGroup("sample-client", config(servers));
+        HttpResourceGroup resourceGroup = Ribbon.createHttpResourceGroup(NAME, config(servers));
         builder = resourceGroup.newTemplateBuilder("sample-client");
 //        service = builder
 //                .withMethod("GET")
@@ -92,8 +96,12 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     @Override
     public Future<T> send(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+
+        HystrixCommandGroupKey key = HystrixCommandGroupKey.Factory.asKey(NAME);
+
         HttpRequestTemplate<ByteBuf> service = builder
                 .withMethod("POST")
+                .withHystrixProperties(HystrixObservableCommand.Setter.withGroupKey(key).andCommandKey(HystrixCommandKey.Factory.asKey(procedureName))) //TODO maybe cache?
                 .withUriTemplate(procedureName)
                 .build();
 
