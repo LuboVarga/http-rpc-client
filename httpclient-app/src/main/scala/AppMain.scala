@@ -45,9 +45,6 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
     val clients = (1 to 1).map(_ => new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8887,http://localhost:8888,http://localhost:8889")).par
     clients.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(50))
     val allDurations = clients.flatMap(r => {
-      println("Going to do warm-up.")
-      (1 to 200).foreach(i => r.send(r.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get)
-
       val a = (1 to 2000).par
       a.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(4))
 

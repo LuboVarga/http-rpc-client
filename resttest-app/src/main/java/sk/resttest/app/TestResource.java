@@ -51,7 +51,6 @@ public class TestResource {
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";
     }
 
-
     @POST
     @Path("/call")
     @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})

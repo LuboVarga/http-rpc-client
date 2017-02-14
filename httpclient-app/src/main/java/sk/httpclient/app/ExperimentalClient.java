@@ -1,5 +1,6 @@
 package sk.httpclient.app;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.client.DefaultLoadBalancerRetryHandler;
 import com.netflix.client.RetryHandler;
@@ -63,6 +64,12 @@ public class ExperimentalClient<R, T> implements MyHttpClient<R, T> {
 
     @Override
     public Future<T> send(String procedureName, R request, Class <T> clazz) {
+        return build.submit(server -> makeCall(server, procedureName, clazz)).toBlocking().toFuture();
+    }
+
+    @Override
+    public Future<T> sendIdempotent(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+        // TODO implement correctly?
         return build.submit(server -> makeCall(server, procedureName, clazz)).toBlocking().toFuture();
     }
 

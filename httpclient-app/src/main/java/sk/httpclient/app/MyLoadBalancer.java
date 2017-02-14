@@ -13,9 +13,14 @@ public class MyLoadBalancer extends ZoneAwareLoadBalancer {
 
     @Override
     public Server chooseServer(Object key) {
-        Server server = super.chooseServer(key);
-        System.out.println("choosing: " + (server == null ? "server is null " : server.getPort()));
-        return server;
+        try {
+            Server server = super.chooseServer(key);
+            System.out.println("choosing: " + (server == null ? "server is null " : server.getPort()));
+            return server;
+        } catch (NullPointerException ex) {
+            System.out.println("NPE!!!");
+            return null;
+        }
     }
 
     @Override
