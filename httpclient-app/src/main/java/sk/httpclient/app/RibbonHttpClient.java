@@ -106,14 +106,13 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         return HystrixCommandProperties.Setter()
                 .withExecutionTimeoutInMilliseconds(10000)
                 .withCircuitBreakerEnabled(true)
-                .withCircuitBreakerSleepWindowInMilliseconds(10)
-                .withMetricsRollingStatisticalWindowInMilliseconds(10)
+                .withCircuitBreakerSleepWindowInMilliseconds(10000)
+                .withMetricsRollingStatisticalWindowInMilliseconds(10000)
                 .withCircuitBreakerRequestVolumeThreshold(20)
                 .withCircuitBreakerErrorThresholdPercentage(50);
     }
 
     private Future<T> sendInternal(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-
         HttpRequestTemplate<ByteBuf> service = builder
                 .withMethod("POST")
                 .withResponseValidator(getValidator(procedureName))
@@ -151,5 +150,4 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         ByteBuf buf = Unpooled.copiedBuffer(mapperDefault.writeValueAsString(request).getBytes());
         return Observable.just(buf);
     }
-
 }
