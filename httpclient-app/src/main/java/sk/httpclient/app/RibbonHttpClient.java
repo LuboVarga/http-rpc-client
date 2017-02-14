@@ -104,10 +104,12 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private HystrixCommandProperties.Setter hystrixSettings() {
         return HystrixCommandProperties.Setter()
-                //.withExecutionTimeoutInMilliseconds(10000)
-                .withCircuitBreakerEnabled(false)
-                .withCircuitBreakerErrorThresholdPercentage(80)
-                .withMetricsRollingPercentileEnabled(false);
+                .withExecutionTimeoutInMilliseconds(10000)
+                .withCircuitBreakerEnabled(true)
+                .withCircuitBreakerSleepWindowInMilliseconds(10)
+                .withMetricsRollingStatisticalWindowInMilliseconds(10)
+                .withCircuitBreakerRequestVolumeThreshold(20)
+                .withCircuitBreakerErrorThresholdPercentage(50);
     }
 
     private Future<T> sendInternal(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
@@ -133,8 +135,8 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     private HystrixObservableCommand.Setter getHystrixSetter(String procedureName) {
         return HystrixObservableCommand.Setter.
                 withGroupKey(key).
-                andCommandKey(HystrixCommandKey.Factory.asKey(procedureName));
-        //andCommandPropertiesDefaults(hystrixSettings());
+                andCommandKey(HystrixCommandKey.Factory.asKey(procedureName)).
+                andCommandPropertiesDefaults(hystrixSettings());
     }
 
     private ResponseValidator<HttpClientResponse<ByteBuf>> getValidator(final String procedureName) {
