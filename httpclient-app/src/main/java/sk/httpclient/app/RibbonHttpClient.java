@@ -109,6 +109,9 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 .withCircuitBreakerSleepWindowInMilliseconds(10000)
                 .withMetricsRollingStatisticalWindowInMilliseconds(10000)
                 .withCircuitBreakerRequestVolumeThreshold(20)
+                .withMetricsRollingPercentileEnabled(true)
+                .withMetricsRollingPercentileWindowInMilliseconds(10000)
+                .withMetricsRollingStatisticalWindowBuckets(10)
                 .withCircuitBreakerErrorThresholdPercentage(50);
     }
 
