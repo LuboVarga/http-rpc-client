@@ -106,8 +106,8 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         return HystrixCommandProperties.Setter()
                 .withExecutionTimeoutInMilliseconds(10000)
                 .withCircuitBreakerEnabled(true)
-                .withCircuitBreakerSleepWindowInMilliseconds(10)
-                .withMetricsRollingStatisticalWindowInMilliseconds(10)
+                .withCircuitBreakerSleepWindowInMilliseconds(10000)
+                .withMetricsRollingStatisticalWindowInMilliseconds(10000)
                 .withCircuitBreakerRequestVolumeThreshold(20)
                 .withCircuitBreakerErrorThresholdPercentage(50);
     }
@@ -141,10 +141,18 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private ResponseValidator<HttpClientResponse<ByteBuf>> getValidator(final String procedureName) {
         return response -> {
-            if (response.getStatus().code() < 200 || response.getStatus().code() > 299) {
-                throw new ServerError("Server error with procedure name: " + procedureName + " status: " + response.getStatus().code() + " reason: " + response.getStatus().reasonPhrase());
+            if (response.getStatus().code() > 399 || response.getStatus().code() < 500 || response.getStatus().code() < 200) {
+                throw new UnsuccessfulResponseException(getMessage(procedureName, response));
+            }
+
+            if (response.getStatus().code() > 499) {
+                throw new ServerError(getMessage(procedureName, response));
             }
         };
+    }
+
+    private String getMessage(String procedureName, HttpClientResponse<ByteBuf> response) {
+        return "Server error with procedure name: " + procedureName + " status: " + response.getStatus().code() + " reason: " + response.getStatus().reasonPhrase();
     }
 
     private Observable<ByteBuf> toJson(R request) throws JsonProcessingException {
