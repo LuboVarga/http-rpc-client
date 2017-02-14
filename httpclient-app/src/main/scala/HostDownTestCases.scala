@@ -2,7 +2,6 @@ import java.util.concurrent.TimeUnit
 
 import com.codahale.metrics.Metric
 import nl.grons.metrics.scala.Implicits.functionToMetricFilter
-import sk.httpclient.app.MyHttpClient
 
 import scala.collection.JavaConversions._
 import scala.collection.immutable.Seq
@@ -35,11 +34,24 @@ object HostDownTestCases extends TestHelperObject {
     */
   val sleepTimeMs = 18
 
-  def onlyOneServerRunningTest = {}
+  def onlyOneServerRunningTest = {
+    val client = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8888,http://localhost:555,http://localhost:556")
+    TimeUnit.SECONDS.sleep(1)
+    // give ipinger time to fill in lbstatistics instance.
+    val results: Seq[Try[Rec]] = runTest(250, client)
+    printReport(results)
+  }
 
   def serversStartingUpTest = {}
 
-  def serversTurningOff = {}
+  def serversTurningOff = {
+    val client = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8887,http://localhost:8888,http://localhost:8889")
+    TimeUnit.SECONDS.sleep(1)
+    // give ipinger time to fill in lbstatistics instance.
+    val results: Seq[Try[Rec]] = runTest(250, client)
+    printReport(results)
+    ??? // TODO implement parallel shutting of servers down
+  }
 
   def noServerIsRunning = {
     val client = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:554,http://localhost:555,http://localhost:556")
@@ -59,10 +71,14 @@ object HostDownTestCases extends TestHelperObject {
     println(s"noServerIsRunning finished. $successRequest|$failedRequest\n")
     println("\t\t\t\t\tcall\trecord")
     printTableLine("countEmit\t\t\t")
-    printTableLine("countShortCircuited\t")
-    printTableLine("countTimeout\t\t")
     printTableLine("countExceptionsThrown")
+    printTableLine("countFailure\t\t")
     printTableLine("countFallbackMissing")
+    printTableLine("countSemaphoreRejected")
+    printTableLine("countShortCircuited\t")
+    printTableLine("countSuccess\t\t")
+    printTableLine("countTimeout\t\t")
+    printTableLine("errorPercentage\t\t")
     printTableLine("latencyTotal_mean\t")
     printTableLine("latencyExecute_mean\t")
   }
@@ -102,9 +118,9 @@ object HostDownTestCases extends TestHelperObject {
     })
 
   def main(args: Array[String]): Unit = {
-    onlyOneServerRunningTest
-    serversStartingUpTest
+    //onlyOneServerRunningTest
+    //serversStartingUpTest
     serversTurningOff
-    noServerIsRunning
+    //noServerIsRunning
   }
 }
