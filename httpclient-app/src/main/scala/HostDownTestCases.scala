@@ -2,6 +2,7 @@ import java.util.concurrent.TimeUnit
 
 import com.codahale.metrics.Metric
 import nl.grons.metrics.scala.Implicits.functionToMetricFilter
+import sk.httpclient.app.MyHttpClient
 
 import scala.collection.JavaConversions._
 import scala.collection.immutable.Seq
@@ -42,32 +43,33 @@ object HostDownTestCases extends TestHelperObject {
 
   def noServerIsRunning = {
     val client = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:554,http://localhost:555,http://localhost:556")
-    TimeUnit.SECONDS.sleep(2)
+    TimeUnit.SECONDS.sleep(1)
     // give ipinger time to fill in lbstatistics instance.
-    val results: Seq[Try[Rec]] = (1 to 500)
-      .map(i => if (i % 2 == 0) {
-        (i, client.PORCEDURE_getRecord)
-      } else {
-        (i, client.PORCEDURE_makeCall)
-      })
-      .map({
-        case (i, procedureName) => {
-          TimeUnit.MILLISECONDS.sleep(sleepTimeMs)
-          httpRpc.time(Try(client.send(procedureName, new Rec("CALL " + procedureName, i, "LLAC"), classOf[Rec]).get))
-        }
-      })
-
+    val results: Seq[Try[Rec]] = runTest(250, client)
     printReport(results)
   }
 
   def printReport(results: Seq[Try[Rec]]) = {
+    reporter.report()
+    println("Five sample/random results:")
+    scala.util.Random.shuffle(results).take(5).foreach(r => println("VYSLEDOK:" + r))
+
     val successRequest = results.count(t => t.isInstanceOf[Success[Rec]])
     val failedRequest = results.count(t => t.isInstanceOf[Success[Rec]] == false)
-    reporter.report()
     println(s"noServerIsRunning finished. $successRequest|$failedRequest\n")
-    println("\t\tcall\trecord")
-    println(s"countEmit\t${getValueForMetricsNameContaining(".countEmit", "call").head._2.getValue}\t${getValueForMetricsNameContaining(".countEmit", "record").head._2.getValue}")
-    results.take(5).foreach(r => println("VYSLEDOK:" + r))
+    println("\t\t\t\t\tcall\trecord")
+    printTableLine("countEmit\t\t\t")
+    printTableLine("countShortCircuited\t")
+    printTableLine("countTimeout\t\t")
+    printTableLine("countExceptionsThrown")
+    printTableLine("countFallbackMissing")
+    printTableLine("latencyTotal_mean\t")
+    printTableLine("latencyExecute_mean\t")
+  }
+
+  def printTableLine(metricsType: String) = {
+    val trimmed = metricsType.trim
+    println(s"${metricsType}\t${getValueForMetricsNameContaining("." + trimmed, "call").head._2.getValue}\t\t${getValueForMetricsNameContaining("." + trimmed, "record").head._2.getValue}")
   }
 
   def getValueForMetricsNameContaining(stringToContain: String*) = {
@@ -83,8 +85,21 @@ object HostDownTestCases extends TestHelperObject {
         }
         numberOfContainedStrings == stringToContain.length
       })
-      //.map(x => println(s"On ${x._1} there was ${x._2.getValue}"))
+    //.map(x => println(s"On ${x._1} there was ${x._2.getValue}"))
   }
+
+  def runTest(requestCount: Int, client: ControllingRibbonHttpClient[Rec, Rec]) = (1 to requestCount)
+    .map(i => if (i % 2 == 0) {
+      (i, client.PORCEDURE_getRecord)
+    } else {
+      (i, client.PORCEDURE_makeCall)
+    })
+    .map({
+      case (i, procedureName) => {
+        TimeUnit.MILLISECONDS.sleep(sleepTimeMs)
+        httpRpc.time(Try(client.send(procedureName, new Rec("CALL " + procedureName, i, "LLAC"), classOf[Rec]).get))
+      }
+    })
 
   def main(args: Array[String]): Unit = {
     onlyOneServerRunningTest
