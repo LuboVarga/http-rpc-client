@@ -57,7 +57,7 @@ public class App {
                 Future<Record> aaa = r.send("/test/record", new Record(), Record.class);
                 Record o = aaa.get();
             } catch (Exception ex) {
-                System.out.println("RPC call failed. ex=" + ex.getMessage());
+                ex.printStackTrace();
             }
             s.addValue((System.nanoTime() - start) / 1000000.0);
             if (DOSLEEP) {
