@@ -7,15 +7,16 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Path("/test")
 public class TestResource {
     private final Logger LOG = LoggerFactory.getLogger(TestResource.class);
     static AtomicInteger counter = new AtomicInteger(0);
-    static boolean fail = false;
-    private long sleepTime = 0;
-    private boolean throwException = false;
+    static AtomicBoolean fail = new AtomicBoolean(false);
+    private static long sleepTime = 0;
+    private static boolean throwException = false;
 
     @GET
     @Path("/record")
@@ -43,10 +44,10 @@ public class TestResource {
     @Consumes({MediaType.TEXT_PLAIN})
     @Produces(MediaType.APPLICATION_JSON)
     public Response maybeFail(String data) {
-        if (fail) {
+        if (fail.get()) {
             System.out.print(" (404 " + TestResource.fail + ") ");
 
-            return Response.status(Response.Status.FORBIDDEN).build();
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE).build();
         } else {
             System.out.print("." + data + " " + TestResource.fail + ".");
             return Response.ok().entity("{ \"name\":\"John\", \"age\":" + data + ", \"city\":\"Post New York\" }").build();
@@ -98,13 +99,14 @@ public class TestResource {
         if (data.contains("5")) {
             this.sleepTime = 0;
             this.throwException = false;
-            fail = true;
+            fail.set(true);
             LOG.info("control is going to 4. All ok state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"ALL OK\" }";
         }
         if (data.contains("4")) {
             this.sleepTime = 0;
             this.throwException = false;
+            fail.set(false);
             LOG.info("control is going to 4. All ok state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"ALL OK\" }";
         }
