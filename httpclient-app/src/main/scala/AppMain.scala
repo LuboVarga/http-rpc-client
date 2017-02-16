@@ -59,9 +59,9 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
         val o = httpRpc.time {
           Try {
             if (i % 2 == 0) {
-              r.send(r.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get
+              r.send(ControllingRibbonHttpClient.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get
             } else {
-              r.send(r.PORCEDURE_makeCall, new Rec("CALL", i, "LLAC"), classOf[Rec]).get
+              r.send(ControllingRibbonHttpClient.PORCEDURE_makeCall, new Rec("CALL", i, "LLAC"), classOf[Rec]).get
             }
           }.toOption
         }

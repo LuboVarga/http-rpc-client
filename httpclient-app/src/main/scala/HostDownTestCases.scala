@@ -1,4 +1,4 @@
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{Future, TimeUnit}
 
 import com.codahale.metrics.Metric
 import nl.grons.metrics.scala.Implicits.functionToMetricFilter
@@ -27,6 +27,7 @@ import scala.util.{Success, Try}
   * Created by Ľubomír Varga on 14.2.2017.
   */
 object HostDownTestCases extends TestHelperObject {
+  val printMetrics = false
   val servers = "http://localhost:8887,http://localhost:8888,http://localhost:8889"
 
   /**
@@ -34,41 +35,38 @@ object HostDownTestCases extends TestHelperObject {
     */
   val sleepTimeMs = 18
 
-  def onlyOneServerRunningTest = {
-    val client = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8888,http://localhost:555,http://localhost:556")
-    TimeUnit.SECONDS.sleep(1)
-    // give ipinger time to fill in lbstatistics instance.
-    val results: Seq[Try[Rec]] = runTest(250, client)
-    printReport(results)
+  def onlyOneServerRunningTest(testName: String, sender: SenderType[Rec, Rec]) = {
+    val results: Seq[Try[Rec]] = runTest(250, sender)
+    printReport(testName, results)
   }
 
-  def serversStartingUpTest = {}
+  def serversStartingUpTest(testName: String, sender: SenderType[Rec, Rec], client: ControllingRibbonHttpClient[Rec, Rec]) = {
+    // turn off servers for beginning...
+    client.deploy(10)
+    client.deploy(15)
+    client.deploy(20)
+    ??? // TODO implement
+  }
 
-  def serversTurningOff = {
-    val client = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8887,http://localhost:8888,http://localhost:8889")
-    TimeUnit.SECONDS.sleep(1)
-    // give ipinger time to fill in lbstatistics instance.
-    val results: Seq[Try[Rec]] = runTest(250, client)
-    printReport(results)
+  def serversTurningOff(testName: String, sender: SenderType[Rec, Rec]) = {
+    val results: Seq[Try[Rec]] = runTest(250, sender)
+    printReport(testName, results)
     ??? // TODO implement parallel shutting of servers down
   }
 
-  def noServerIsRunning = {
-    val client = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:554,http://localhost:555,http://localhost:556")
-    TimeUnit.SECONDS.sleep(1)
-    // give ipinger time to fill in lbstatistics instance.
-    val results: Seq[Try[Rec]] = runTest(250, client)
-    printReport(results)
+  def noServerIsRunning(testName: String, sender: SenderType[Rec, Rec]) = {
+    val results: Seq[Try[Rec]] = runTest(250, sender)
+    printReport(testName, results)
   }
 
-  def printReport(results: Seq[Try[Rec]]) = {
-    reporter.report()
+  def printReport(testName: String, results: Seq[Try[Rec]]) = {
+    if(printMetrics) reporter.report()
     println("Five sample/random results:")
     scala.util.Random.shuffle(results).take(5).foreach(r => println("VYSLEDOK:" + r))
 
     val successRequest = results.count(t => t.isInstanceOf[Success[Rec]])
     val failedRequest = results.count(t => t.isInstanceOf[Success[Rec]] == false)
-    println(s"noServerIsRunning finished. $successRequest|$failedRequest\n")
+    println(s"${testName} finished. $successRequest|$failedRequest\n")
     println("\t\t\t\t\tcall\trecord")
     printTableLine("countEmit\t\t\t")
     printTableLine("countExceptionsThrown")
@@ -104,23 +102,41 @@ object HostDownTestCases extends TestHelperObject {
     //.map(x => println(s"On ${x._1} there was ${x._2.getValue}"))
   }
 
-  def runTest(requestCount: Int, client: ControllingRibbonHttpClient[Rec, Rec]) = (1 to requestCount)
+  def runTest(requestCount: Int, sender: SenderType[Rec, Rec]) = (1 to requestCount)
     .map(i => if (i % 2 == 0) {
-      (i, client.PORCEDURE_getRecord)
+      (i, ControllingRibbonHttpClient.PORCEDURE_getRecord)
     } else {
-      (i, client.PORCEDURE_makeCall)
+      (i, ControllingRibbonHttpClient.PORCEDURE_makeCall)
     })
     .map({
       case (i, procedureName) => {
         TimeUnit.MILLISECONDS.sleep(sleepTimeMs)
-        httpRpc.time(Try(client.send(procedureName, new Rec("CALL " + procedureName, i, "LLAC"), classOf[Rec]).get))
+        httpRpc.time(Try(sender(procedureName, new Rec("CALL " + procedureName, i, "LLAC"), classOf[Rec]).get))
       }
     })
 
   def main(args: Array[String]): Unit = {
-    //onlyOneServerRunningTest
-    //serversStartingUpTest
-    serversTurningOff
-    //noServerIsRunning
+    val client = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8887,http://localhost:8888,http://localhost:8889")
+    val clientAllOff = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:554,http://localhost:555,http://localhost:556")
+    val clientOneRunningServer = new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8888,http://localhost:555,http://localhost:556")
+    // give ipinger time to fill in lbstatistics instance.
+    TimeUnit.SECONDS.sleep(1)
+
+    noServerIsRunning("noServerIsRunning - Idempotent", senderIdempotent(clientAllOff))
+    noServerIsRunning("noServerIsRunning - NON-idempotent", senderNormal(clientAllOff))
+
+    onlyOneServerRunningTest("onlyOneServerRunningTest - Idempotent", senderIdempotent(clientOneRunningServer))
+    onlyOneServerRunningTest("onlyOneServerRunningTest - NON-idempotent", senderNormal(clientOneRunningServer))
+
+    serversStartingUpTest("serversStartingUpTest - Idempotent", senderIdempotent(client), client)
+    serversStartingUpTest("serversStartingUpTest - NON-idempotent", senderNormal(client), client)
+
+    serversTurningOff("serversTurningOff - Idempotent", senderIdempotent(client))
+    serversTurningOff("serversTurningOff - NON-idempotent", senderNormal(client))
   }
+
+  //type sender[R, T] = (procedureName: String , request: R, clazz: Class[T]) => T
+  type SenderType[R, T] = (String , R, Class[T]) => Future[T]
+  def senderIdempotent[R, T](client: ControllingRibbonHttpClient[R, T]): SenderType[R, T] = (procedureName: String, request: R, clazz: Class[T]) => client.sendIdempotent(procedureName, request, clazz)
+  def senderNormal[R, T](client: ControllingRibbonHttpClient[R, T]): SenderType[R, T] = (procedureName: String, request: R, clazz: Class[T]) => client.send(procedureName, request, clazz)
 }

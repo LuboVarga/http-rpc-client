@@ -6,12 +6,29 @@ import scala.util.Try
   * Created by Ľubomír Varga on 10.2.2017.
   */
 class ControllingRibbonHttpClient[R, T](servers: String) extends RibbonHttpClient[R, T](servers) {
-
   /**
     * This is also instance of RibbonHttpClient. This attribute holds another instance (with different types) to same servers.
     */
   val controlClient = new RibbonHttpClient[String, String](servers)
 
+  def deploy(deployTimeInSeconds: Int) = Try {
+    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, s"${ControllingRibbonHttpClient.CONTROL_DEPLOY},$deployTimeInSeconds", classOf[String]).get()
+  }.recover { case t: Throwable => t.printStackTrace(); t.getMessage }.get
+
+  def dbDown = Try {
+    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, ControllingRibbonHttpClient.CONTROL_DB_DOWN, classOf[String]).get()
+  }.recover { case t: Throwable => t.getMessage }.get
+
+  def overload = Try {
+    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, ControllingRibbonHttpClient.CONTROL_OVERLOAD, classOf[String]).get()
+  }.recover { case t: Throwable => t.getMessage }.get
+
+  def ok = Try {
+    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, ControllingRibbonHttpClient.CONTROL_OK, classOf[String]).get()
+  }.recover { case t: Throwable => t.getMessage }.get
+}
+
+object ControllingRibbonHttpClient {
   val PORCEDURE_getRecord = "/test/record"
   val PORCEDURE_makeCall = "/test/call"
   val PORCEDURE_control = "/test/control"
@@ -34,12 +51,4 @@ class ControllingRibbonHttpClient[R, T](servers: String) extends RibbonHttpClien
     * Make server responding OK. Without delay and with proper content/status code.
     */
   val CONTROL_OK = "4"
-
-  def deploy(deployTimeInSeconds: Int) = Try{this.controlClient.send(PORCEDURE_control, s"$CONTROL_DEPLOY,$deployTimeInSeconds", classOf[String]).get()}.recover{case t: Throwable => t.printStackTrace(); t.getMessage}.get
-
-  def dbDown = Try{this.controlClient.send(PORCEDURE_control, CONTROL_DB_DOWN, classOf[String]).get()}.recover{case t: Throwable => t.getMessage}.get
-
-  def overload = Try{this.controlClient.send(PORCEDURE_control, CONTROL_OVERLOAD, classOf[String]).get()}.recover{case t: Throwable => t.getMessage}.get
-
-  def ok = Try{this.controlClient.send(PORCEDURE_control, CONTROL_OK, classOf[String]).get()}.recover{case t: Throwable => t.getMessage}.get
 }
