@@ -10,6 +10,7 @@ import com.netflix.hystrix.HystrixCommandGroupKey;
 import com.netflix.hystrix.HystrixCommandKey;
 import com.netflix.hystrix.HystrixCommandProperties;
 import com.netflix.hystrix.HystrixObservableCommand;
+import com.netflix.hystrix.exception.HystrixBadRequestException;
 import com.netflix.ribbon.*;
 import com.netflix.ribbon.http.HttpRequestTemplate;
 import com.netflix.ribbon.http.HttpResourceGroup;
@@ -32,6 +33,11 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     private HttpRequestTemplate.Builder<ByteBuf> builder;
     private RetryPolicy retryPolicy = new RetryPolicy()
             .retryOn(ConnectException.class)
+            .withMaxRetries(1)
+            .withDelay(500, TimeUnit.MILLISECONDS);
+
+    private RetryPolicy idempotentRetryPolicy = new RetryPolicy()
+            .retryOn(ConnectException.class, UnsuccessfulResponseException.class, HystrixBadRequestException.class)
             .withMaxRetries(1)
             .withDelay(500, TimeUnit.MILLISECONDS);
 
@@ -99,7 +105,24 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     @Override
     public Future<T> sendIdempotent(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-        return Failsafe.with(retryPolicy).get(() -> sendInternal(procedureName, request, clazz));
+        return Failsafe.with(idempotentRetryPolicy).get(() -> sendInternal(procedureName, request, clazz));
+    }
+
+    @Override
+    public T sendIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+        return Failsafe.with(idempotentRetryPolicy).get(() -> {
+            HttpRequestTemplate<ByteBuf> service = builder
+                    .withMethod("POST")
+                    .withResponseValidator(getValidator(procedureName))
+                    .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
+                    .withUriTemplate(procedureName)
+                    .build();
+
+            RibbonRequest<ByteBuf> req = service.requestBuilder().withContent(toJson(request)).build();
+
+            ByteBuf buf = req.execute();
+            return convert(clazz, buf);
+        });
     }
 
     private HystrixCommandProperties.Setter hystrixSettings() {
@@ -109,7 +132,10 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 .withCircuitBreakerSleepWindowInMilliseconds(10000)
                 .withMetricsRollingStatisticalWindowInMilliseconds(10000)
                 .withCircuitBreakerRequestVolumeThreshold(20)
-                .withCircuitBreakerErrorThresholdPercentage(50);
+                .withMetricsRollingPercentileEnabled(true)
+                .withMetricsRollingPercentileWindowInMilliseconds(10000)
+                .withMetricsRollingStatisticalWindowBuckets(10)
+                .withCircuitBreakerErrorThresholdPercentage(5); //TODO set to 50
     }
 
     private Future<T> sendInternal(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
@@ -140,10 +166,18 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private ResponseValidator<HttpClientResponse<ByteBuf>> getValidator(final String procedureName) {
         return response -> {
-            if (response.getStatus().code() < 200 || response.getStatus().code() > 299) {
-                throw new ServerError("Server error with procedure name: " + procedureName + " status: " + response.getStatus().code() + " reason: " + response.getStatus().reasonPhrase());
+            if (response.getStatus().code() > 399 && response.getStatus().code() < 500 || response.getStatus().code() < 200) {
+                throw new UnsuccessfulResponseException(getMessage(procedureName, response));
+            }
+
+            if (response.getStatus().code() > 499) {
+                throw new ServerError(getMessage(procedureName, response));
             }
         };
+    }
+
+    private String getMessage(String procedureName, HttpClientResponse<ByteBuf> response) {
+        return "Server error with procedure name: " + procedureName + " status: " + response.getStatus().code() + " reason: " + response.getStatus().reasonPhrase();
     }
 
     private Observable<ByteBuf> toJson(R request) throws JsonProcessingException {
