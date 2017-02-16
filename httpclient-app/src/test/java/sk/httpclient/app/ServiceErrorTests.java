@@ -5,6 +5,7 @@ import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher;
+import com.netflix.hystrix.exception.HystrixRuntimeException;
 import com.netflix.hystrix.strategy.HystrixPlugins;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -53,42 +54,48 @@ public class ServiceErrorTests {
     @Test
     public void oneServerBadService() throws JsonProcessingException, ExecutionException, InterruptedException {
         try {
-            client.sendIdempotentImmidiate("/test/control", "5", Record.class);
+            client.sendIdempotentImmidiate("/test/control", "fail 500", Record.class);
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
-        int accumulator = makeRequests();
+        int accumulator = makeIdempotentRequests(120, 100);
 
-        assertEquals(10, accumulator);
+        assertEquals(120, accumulator);
     }
 
-    @Test
-    public void omultipleServerBadService() throws JsonProcessingException, ExecutionException, InterruptedException {
+    @Test(expected = HystrixRuntimeException.class)
+    public void multipleServerBadService() throws JsonProcessingException, ExecutionException, InterruptedException {
         try {
-            client.sendIdempotentImmidiate("/test/control", "5", Record.class);
-            client.sendIdempotentImmidiate("/test/control", "5", Record.class);
+            client.sendIdempotentImmidiate("/test/control", "fail 500", Record.class);
+            client.sendIdempotentImmidiate("/test/control", "fail 500", Record.class);
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
-        int accumulator = makeRequests();
-
-        assertEquals(10, accumulator);
+        makeNonIdempotentRequests(120, 100);
     }
 
-    private int makeRequests() {
+    private int makeIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
         int accumulator = 0;
-        for (int i = 0; i < 600; i++) {
-            Record ok = null;
-            System.out.println("iteracia: " + i);
-            try {
-                ok = client.sendIdempotentImmidiate("/test/maybefail", "1", Record.class);
-                Thread.sleep(12);
-            } catch (Throwable e) {
-                System.out.println("vynimka " + e.getClass().getName());
-                e.printStackTrace();
-            }
+        Record ok;
+
+        for (int i = 0; i < requestCount; i++) {
+            ok = client.sendIdempotentImmidiate("/test/maybefail", "1", Record.class);
+            Thread.sleep(delay);
+            if (ok != null)
+                accumulator += ok.getAge();
+        }
+        return accumulator;
+    }
+
+   private int makeNonIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
+        int accumulator = 0;
+        Record ok;
+
+        for (int i = 0; i < requestCount; i++) {
+            ok = client.sendNonIdempotentImmidiate("/test/maybefail", "1", Record.class);
+            Thread.sleep(delay);
             if (ok != null)
                 accumulator += ok.getAge();
         }

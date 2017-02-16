@@ -10,19 +10,15 @@ import com.netflix.hystrix.HystrixCommandGroupKey;
 import com.netflix.hystrix.HystrixCommandKey;
 import com.netflix.hystrix.HystrixCommandProperties;
 import com.netflix.hystrix.HystrixObservableCommand;
-import com.netflix.hystrix.exception.HystrixBadRequestException;
 import com.netflix.ribbon.*;
 import com.netflix.ribbon.http.HttpRequestTemplate;
 import com.netflix.ribbon.http.HttpResourceGroup;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import rx.Observable;
 import rx.functions.Func1;
 
-import java.net.ConnectException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -31,15 +27,6 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     private static final String NAME = "sample-client";
     private final ObjectMapper mapperDefault = new ObjectMapper();
     private HttpRequestTemplate.Builder<ByteBuf> builder;
-    private RetryPolicy retryPolicy = new RetryPolicy()
-            .retryOn(ConnectException.class)
-            .withMaxRetries(1)
-            .withDelay(500, TimeUnit.MILLISECONDS);
-
-    private RetryPolicy idempotentRetryPolicy = new RetryPolicy()
-            .retryOn(ConnectException.class, UnsuccessfulResponseException.class, HystrixBadRequestException.class)
-            .withMaxRetries(1)
-            .withDelay(500, TimeUnit.MILLISECONDS);
 
     private HystrixCommandGroupKey key = HystrixCommandGroupKey.Factory.asKey(NAME);
 
@@ -101,29 +88,44 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     @Override
     @SuppressWarnings("unchecked")
     public Future<T> send(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-        return Failsafe.with(retryPolicy).get(() -> sendInternal(procedureName, request, clazz));
+        return sendInternal(procedureName, request, clazz);
     }
 
     @Override
     public Future<T> sendIdempotent(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-        return Failsafe.with(idempotentRetryPolicy).get(() -> sendInternal(procedureName, request, clazz));
+        return sendInternal(procedureName, request, clazz);
+    }
+
+    public T sendNonIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+        HttpRequestTemplate<ByteBuf> service = builder
+                .withMethod("POST")
+                .withResponseValidator(getValidator(procedureName))
+                .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
+                .withUriTemplate(procedureName)
+                .build();
+
+        RibbonRequest<ByteBuf> req = service.requestBuilder()
+                .withRequestProperty(CommonClientConfigKey.MaxAutoRetriesNextServer.key(), 3)
+                .withContent(toJson(request)).build();
+
+        ByteBuf buf = req.execute();
+        return convert(clazz, buf);
     }
 
     @Override
     public T sendIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-        return Failsafe.with(idempotentRetryPolicy).get(() -> {
-            HttpRequestTemplate<ByteBuf> service = builder
-                    .withMethod("POST")
-                    .withResponseValidator(getValidator(procedureName))
-                    .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
-                    .withUriTemplate(procedureName)
-                    .build();
+        HttpRequestTemplate<ByteBuf> service = builder
+                .withMethod("GET")
+                .withResponseValidator(getValidator(procedureName))
+                .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
+                .withUriTemplate(procedureName)
+                .build();
 
-            RibbonRequest<ByteBuf> req = service.requestBuilder().withContent(toJson(request)).build();
+        RibbonRequest<ByteBuf> req = service.requestBuilder()
+                .withRequestProperty(CommonClientConfigKey.MaxAutoRetriesNextServer.key(), 3).build();
 
-            ByteBuf buf = req.execute();
-            return convert(clazz, buf);
-        });
+        ByteBuf buf = req.execute();
+        return convert(clazz, buf);
     }
 
     private HystrixCommandProperties.Setter hystrixSettings() {

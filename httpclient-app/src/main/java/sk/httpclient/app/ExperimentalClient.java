@@ -77,6 +77,11 @@ public class ExperimentalClient<R, T> implements MyHttpClient<R, T> {
         return null;
     }
 
+    @Override
+    public T sendNonIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+        return null;
+    }
+
 
     private static String convertStreamToString(HttpURLConnection conn) throws IOException {
 

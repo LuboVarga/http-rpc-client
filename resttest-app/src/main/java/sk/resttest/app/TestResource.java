@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class TestResource {
     private final Logger LOG = LoggerFactory.getLogger(TestResource.class);
     static AtomicInteger counter = new AtomicInteger(0);
-    static AtomicBoolean fail = new AtomicBoolean(false);
+    static AtomicInteger failCode = new AtomicInteger(0);
     private static long sleepTime = 0;
     private static boolean throwException = false;
 
@@ -44,13 +44,28 @@ public class TestResource {
     @Consumes({MediaType.TEXT_PLAIN})
     @Produces(MediaType.APPLICATION_JSON)
     public Response maybeFail(String data) {
-        if (fail.get()) {
-            System.out.print(" (404 " + TestResource.fail + ") ");
-
-            return Response.status(Response.Status.SERVICE_UNAVAILABLE).build();
+        int returnCode = failCode.get();
+        if (returnCode != 0) {
+            System.out.print(" (" + returnCode + ") ");
+            return Response.status(returnCode).build();
         } else {
-            System.out.print("." + data + " " + TestResource.fail + ".");
+            System.out.print("." + data + ".");
             return Response.ok().entity("{ \"name\":\"John\", \"age\":" + data + ", \"city\":\"Post New York\" }").build();
+        }
+    }
+
+    @GET
+    @Path("/maybefail")
+    @Consumes({MediaType.TEXT_PLAIN})
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response maybeFail() {
+        int returnCode = failCode.get();
+        if (returnCode != 0) {
+            System.out.print(" (" + returnCode + ") ");
+            return Response.status(returnCode).build();
+        } else {
+            System.out.print("." + 1 + ".");
+            return Response.ok().entity("{ \"name\":\"John\", \"age\":" + 1 + ", \"city\":\"Post New York\" }").build();
         }
     }
 
@@ -101,12 +116,12 @@ public class TestResource {
      */
     public String control(String data) {
         System.out.println("!!!!!!!!!!control(data=" + data + ")");
-        if (data.startsWith("\"5")) {
-            this.sleepTime = 0;
-            this.throwException = false;
-            fail.set(true);
-            LOG.info("control is going to 5. All ok state.");
-            return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"ALL OK\" }";
+        System.out.println("Control data " + data);
+        if (data.startsWith("\"fail")) {
+            Integer errorCode = Integer.valueOf(data.substring(1, data.length() - 1).split(" ")[1]);
+            System.out.println("failing with " + errorCode);
+            failCode.set(errorCode);
+            return "{}";
         }
         if (data.startsWith("\"4")) {
             this.sleepTime = 0;
