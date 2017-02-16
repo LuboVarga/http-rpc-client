@@ -94,42 +94,51 @@ public class TestResource {
         return this.control(data);
     }
 
+    /**
+     *
+     * @param data  seems to come from client something like "\"1,12\"" for example.
+     * @return
+     */
     public String control(String data) {
-        if (data.contains("5")) {
+        System.out.println("!!!!!!!!!!control(data=" + data + ")");
+        if (data.startsWith("\"5")) {
             this.sleepTime = 0;
             this.throwException = false;
             fail.set(true);
-            LOG.info("control is going to 4. All ok state.");
+            LOG.info("control is going to 5. All ok state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"ALL OK\" }";
         }
-        if (data.contains("4")) {
+        if (data.startsWith("\"4")) {
             this.sleepTime = 0;
             this.throwException = false;
             fail.set(false);
             LOG.info("control is going to 4. All ok state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"ALL OK\" }";
         }
-        if (data.contains("3")) {
+        if (data.startsWith("\"3")) {
             this.sleepTime = 18000;
             LOG.info("control is going to 3. Overload state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"TIMEOUT SIMULATION\" }";
         }
-        if (data.contains("2")) {
+        if (data.startsWith("\"2")) {
             this.throwException = true;
             LOG.info("control is going to 2. DB down state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"PROCESSING EXCEPTION SIMULATION\" }";
         }
-        if (data.contains("1")) {
-            LOG.info("control is going to 1. Restart (simulated deploy) state.");
+        if (data.startsWith("\"1")) {
+            System.out.println("data.startsWith(\"1\"):" + data);
+            String[] splitted = data.split(",");
+            int deploySleep = Integer.parseInt(splitted[1].replace("\"", ""));
+            LOG.info("control is going to 1. Restart (simulated deploy) state. Restart seconds: " + deploySleep);
             new Thread(() -> {
                 try {
-                    Thread.sleep(242);
+                    Thread.sleep(42);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                System.exit(91);
+                System.exit(deploySleep);
             }).start();
-            return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"DEPLOY SIMULATION\" }";
+            return "{ \"name\":\"XXX\", \"age\":" + deploySleep + ", \"city\":\"DEPLOY SIMULATION\" }";
         }
         return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"XX!!XX!!XX\" }";
     }

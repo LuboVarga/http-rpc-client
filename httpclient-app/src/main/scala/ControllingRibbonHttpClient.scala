@@ -1,5 +1,7 @@
 import sk.httpclient.app.RibbonHttpClient
 
+import scala.util.Try
+
 /**
   * Created by Ľubomír Varga on 10.2.2017.
   */
@@ -15,6 +17,9 @@ class ControllingRibbonHttpClient[R, T](servers: String) extends RibbonHttpClien
   val PORCEDURE_control = "/test/control"
   /**
     * Simulate deploy. Reboot server. Its starter (run[789].sh script) will restart it after 30 seconds.
+    *
+    * Server expects number 1 (this constant), than comma and than number of seconds (exit code is used to propagate
+    * sleep time, so max byte value is possible!) to sleep before restart.
     */
   val CONTROL_DEPLOY = "1"
   /**
@@ -30,11 +35,11 @@ class ControllingRibbonHttpClient[R, T](servers: String) extends RibbonHttpClien
     */
   val CONTROL_OK = "4"
 
-  def deploy = this.controlClient.send(PORCEDURE_control, CONTROL_DEPLOY, classOf[String])
+  def deploy(deployTimeInSeconds: Int) = Try{this.controlClient.send(PORCEDURE_control, s"$CONTROL_DEPLOY,$deployTimeInSeconds", classOf[String]).get()}.recover{case t: Throwable => t.printStackTrace(); t.getMessage}.get
 
-  def dbDown = this.controlClient.send(PORCEDURE_control, CONTROL_DB_DOWN, classOf[String])
+  def dbDown = Try{this.controlClient.send(PORCEDURE_control, CONTROL_DB_DOWN, classOf[String]).get()}.recover{case t: Throwable => t.getMessage}.get
 
-  def overload = this.controlClient.send(PORCEDURE_control, CONTROL_OVERLOAD, classOf[String])
+  def overload = Try{this.controlClient.send(PORCEDURE_control, CONTROL_OVERLOAD, classOf[String]).get()}.recover{case t: Throwable => t.getMessage}.get
 
-  def ok = this.controlClient.send(PORCEDURE_control, CONTROL_OK, classOf[String])
+  def ok = Try{this.controlClient.send(PORCEDURE_control, CONTROL_OK, classOf[String]).get()}.recover{case t: Throwable => t.getMessage}.get
 }

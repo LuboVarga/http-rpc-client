@@ -51,9 +51,9 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
       val durations = a.map(i => {
         if (i == 223) {
           println("deploy at 223")
-          r.deploy
-          r.deploy
-          r.deploy
+          r.deploy(30)
+          r.deploy(30)
+          r.deploy(30)
         }
         val start = System.nanoTime()
         val o = httpRpc.time {
