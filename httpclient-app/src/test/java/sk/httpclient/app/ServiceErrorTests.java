@@ -68,9 +68,6 @@ public class ServiceErrorTests {
         try {
             client.sendIdempotentImmidiate("/test/control", "5", Record.class);
             client.sendIdempotentImmidiate("/test/control", "5", Record.class);
-            client.sendIdempotentImmidiate("/test/control", "5", Record.class);
-            client.sendIdempotentImmidiate("/test/control", "5", Record.class);
-            client.sendIdempotentImmidiate("/test/control", "5", Record.class);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -82,13 +79,15 @@ public class ServiceErrorTests {
 
     private int makeRequests() {
         int accumulator = 0;
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 600; i++) {
             Record ok = null;
             System.out.println("iteracia: " + i);
             try {
                 ok = client.sendIdempotentImmidiate("/test/maybefail", "1", Record.class);
+                Thread.sleep(12);
             } catch (Throwable e) {
                 System.out.println("vynimka " + e.getClass().getName());
+                e.printStackTrace();
             }
             if (ok != null)
                 accumulator += ok.getAge();
