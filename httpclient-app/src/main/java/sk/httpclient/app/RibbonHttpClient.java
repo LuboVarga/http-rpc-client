@@ -95,8 +95,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         return sendInternal(procedureName, request, clazz);
     }
 
-    @Override
-    public T sendIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+    public T sendNonIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
         HttpRequestTemplate<ByteBuf> service = builder
                 .withMethod("POST")
                 .withResponseValidator(getValidator(procedureName))
@@ -107,6 +106,22 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         RibbonRequest<ByteBuf> req = service.requestBuilder()
                 .withRequestProperty(CommonClientConfigKey.MaxAutoRetriesNextServer.key(), 3)
                 .withContent(toJson(request)).build();
+
+        ByteBuf buf = req.execute();
+        return convert(clazz, buf);
+    }
+
+    @Override
+    public T sendIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+        HttpRequestTemplate<ByteBuf> service = builder
+                .withMethod("GET")
+                .withResponseValidator(getValidator(procedureName))
+                .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
+                .withUriTemplate(procedureName)
+                .build();
+
+        RibbonRequest<ByteBuf> req = service.requestBuilder()
+                .withRequestProperty(CommonClientConfigKey.MaxAutoRetriesNextServer.key(), 3).build();
 
         ByteBuf buf = req.execute();
         return convert(clazz, buf);

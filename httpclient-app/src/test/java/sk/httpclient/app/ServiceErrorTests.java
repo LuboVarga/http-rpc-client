@@ -54,18 +54,17 @@ public class ServiceErrorTests {
     @Test
     public void oneServerBadService() throws JsonProcessingException, ExecutionException, InterruptedException {
         try {
-            //client.sendIdempotentImmidiate("/test/control", "fail 500", Record.class);
+            client.sendIdempotentImmidiate("/test/control", "fail 500", Record.class);
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
-        int accumulator = makeRequests(120, 100);
-
+        int accumulator = makeIdempotentRequests(120, 100);
 
         assertEquals(120, accumulator);
     }
 
-    @Test(expected=HystrixRuntimeException.class)
+    @Test(expected = HystrixRuntimeException.class)
     public void multipleServerBadService() throws JsonProcessingException, ExecutionException, InterruptedException {
         try {
             client.sendIdempotentImmidiate("/test/control", "fail 500", Record.class);
@@ -74,15 +73,28 @@ public class ServiceErrorTests {
             e.printStackTrace();
         }
 
-        makeRequests(120, 100);
+        makeNonIdempotentRequests(120, 100);
     }
 
-    private int makeRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
+    private int makeIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
         int accumulator = 0;
         Record ok;
 
         for (int i = 0; i < requestCount; i++) {
             ok = client.sendIdempotentImmidiate("/test/maybefail", "1", Record.class);
+            Thread.sleep(delay);
+            if (ok != null)
+                accumulator += ok.getAge();
+        }
+        return accumulator;
+    }
+
+   private int makeNonIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
+        int accumulator = 0;
+        Record ok;
+
+        for (int i = 0; i < requestCount; i++) {
+            ok = client.sendNonIdempotentImmidiate("/test/maybefail", "1", Record.class);
             Thread.sleep(delay);
             if (ok != null)
                 accumulator += ok.getAge();

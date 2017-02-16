@@ -1,6 +1,5 @@
 package sk.resttest.app;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +50,21 @@ public class TestResource {
         } else {
             System.out.print("." + data + ".");
             return Response.ok().entity("{ \"name\":\"John\", \"age\":" + data + ", \"city\":\"Post New York\" }").build();
+        }
+    }
+
+    @GET
+    @Path("/maybefail")
+    @Consumes({MediaType.TEXT_PLAIN})
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response maybeFail() {
+        int returnCode = failCode.get();
+        if (returnCode != 0) {
+            System.out.print(" (" + returnCode + ") ");
+            return Response.status(returnCode).build();
+        } else {
+            System.out.print("." + 1 + ".");
+            return Response.ok().entity("{ \"name\":\"John\", \"age\":" + 1 + ", \"city\":\"Post New York\" }").build();
         }
     }
 
