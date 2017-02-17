@@ -126,7 +126,7 @@ public class TestResource {
         if (data.startsWith("\"4")) {
             this.sleepTime = 0;
             this.throwException = false;
-            fail.set(false);
+            failCode.set(0);
             LOG.info("control is going to 4. All ok state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"ALL OK\" }";
         }
