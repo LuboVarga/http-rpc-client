@@ -5,6 +5,15 @@ public class Record {
     private Integer age = 31;
     private String city = "default city";
 
+    public Record() {
+    }
+
+    public Record(String name, Integer age, String city) {
+        this.name = name;
+        this.age = age;
+        this.city = city;
+    }
+
     public String getName() {
         return name;
     }
@@ -27,5 +36,14 @@ public class Record {
 
     public void setCity(String city) {
         this.city = city;
+    }
+
+    @Override
+    public String toString() {
+        return "Record{" +
+            "name='" + name + '\'' +
+            ", age=" + age +
+            ", city='" + city + '\'' +
+            '}';
     }
 }

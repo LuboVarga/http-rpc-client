@@ -108,7 +108,6 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 .build();
 
         RibbonRequest<ByteBuf> req = service.requestBuilder()
-                .withRequestProperty(CommonClientConfigKey.MaxAutoRetriesNextServer.key(), 3)
                 .withContent(toJson(request)).build();
 
         ByteBuf buf = req.execute();
@@ -124,8 +123,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 .withUriTemplate(procedureName)
                 .build();
 
-        RibbonRequest<ByteBuf> req = service.requestBuilder()
-                .withRequestProperty(CommonClientConfigKey.MaxAutoRetriesNextServer.key(), 3).build();
+        RibbonRequest<ByteBuf> req = service.requestBuilder().build();
 
         ByteBuf buf = req.execute();
         return convert(clazz, buf);
