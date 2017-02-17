@@ -131,9 +131,13 @@ public class TestResource {
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"ALL OK\" }";
         }
         if (data.startsWith("\"3")) {
-            this.sleepTime = 18000;
-            LOG.info("control is going to 3. Overload state.");
-            return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"TIMEOUT SIMULATION\" }";
+            System.out.println("data.startsWith(\"3\"):" + data);
+            String[] splitted = data.split(",");
+            long timeoutSleep = Long.parseLong(splitted[1].replace("\"", ""));
+
+            this.sleepTime = timeoutSleep;
+            LOG.info("control is going to 3. Overload state. Sleep time in ms:" + timeoutSleep);
+            return "{ \"name\":\"XXX\", \"age\":" + timeoutSleep + ", \"city\":\"TIMEOUT SIMULATION\" }";
         }
         if (data.startsWith("\"2")) {
             this.throwException = true;
