@@ -80,17 +80,17 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
     scala.util.Random.shuffle(results)
       .take(5)
       .foreach(r => r match {
-        case x: (String, Success[Record]) => println("VYSLEDOK:" + x)
-        case x: (String, Failure[Record]) => println("VYSLEDOK ex:" + x._1 + "\t"+ x._2.exception.printStackTrace(System.out))
+        case (paramName: String, succ: Success[Record]) => println("VYSLEDOK:" + (paramName, succ))
+        case (paramName: String, fail: Failure[Record]) => println("VYSLEDOK ex:" + paramName + "\t"+ fail.exception.printStackTrace(System.out))
       })
 
-    val resultsGrouped = results.groupBy(res => res match {
-      case s: (String, Success[T]) =>
-        (s._1, true)
-      case s: (String, Failure[T]) =>
-        (s._1, false)
-    })
-    val aggregated = resultsGrouped.map(g => g._1 -> g._2.aggregate(0)({(sum, r) => sum + r._2.map(_ => 1).getOrElse(0)}, { (p1, p2) => p1 + p2 }))
+    val resultsGrouped = results.groupBy(res => (res._1, res._2.isSuccess))
+    /*val resultsGroupedTmp = results.groupBy(res => res match {
+      case (xxx: String, qqq:Success[T]) => (xxx, true)
+      case (yyy: String, www: Failure[T]) => (yyy, false)
+    })*/
+    //val aggregated = resultsGrouped.map(g => g._1 -> g._2.aggregate(0)({(sum, r) => sum + r._2.map(_ => 1).getOrElse(0)}, { (p1, p2) => p1 + p2 }))
+    val aggregated = resultsGrouped.map(g => g._1 -> g._2.size)
 
     aggregated.foreach(x => println(s"${x._1._1}\t${x._1._2}\t: ${x._2}"))
 
