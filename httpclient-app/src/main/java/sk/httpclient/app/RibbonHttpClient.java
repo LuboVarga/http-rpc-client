@@ -45,7 +45,8 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private T convert(Class<T> clazz, ByteBuf buf) {
         if (clazz.equals(String.class)) {
-            return (T) new String(buf.array());
+            //copy() is solving on CompositeByteBuf instance exception "java.lang.UnsupportedOperationException: direct buffer"
+            return (T) new String(buf.copy().array());
         }
         try {
             byte[] bytes = new byte[buf.readableBytes()];
@@ -186,5 +187,4 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         ByteBuf buf = Unpooled.copiedBuffer(mapperDefault.writeValueAsString(request).getBytes());
         return Observable.just(buf);
     }
-
 }

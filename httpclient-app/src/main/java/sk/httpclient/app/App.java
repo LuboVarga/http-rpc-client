@@ -4,6 +4,8 @@ import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.netflix.client.ClientException;
+import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher;
+import com.netflix.hystrix.strategy.HystrixPlugins;
 import org.apache.commons.math3.stat.descriptive.SynchronizedSummaryStatistics;
 
 import java.io.IOException;
@@ -20,6 +22,7 @@ public class App {
         RibbonHttpClient<Record, Record> r = new RibbonHttpClient<>("http://localhost:8888, http://localhost:8889, http://localhost:8887");
         SynchronizedSummaryStatistics s = new SynchronizedSummaryStatistics();
         MetricRegistry metricRegistry = new MetricRegistry();
+        HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry));
         Timer timer = metricRegistry.timer("http-timer");
         ConsoleReporter reporter = ConsoleReporter.forRegistry(metricRegistry)
                 .convertRatesTo(TimeUnit.SECONDS)
@@ -57,6 +60,7 @@ public class App {
                 Future<Record> aaa = r.send("/test/record", new Record(), Record.class);
                 Record o = aaa.get();
             } catch (Exception ex) {
+                System.err.println("RPC call failed. ex=" + ex.getMessage());
                 ex.printStackTrace();
             }
             s.addValue((System.nanoTime() - start) / 1000000.0);

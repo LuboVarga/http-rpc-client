@@ -1,3 +1,5 @@
+package sk.http.app
+
 import java.util.concurrent.TimeUnit
 
 import com.codahale.metrics.{ConsoleReporter, Metric}
@@ -45,26 +47,23 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
     val clients = (1 to 1).map(_ => new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8887,http://localhost:8888,http://localhost:8889")).par
     clients.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(50))
     val allDurations = clients.flatMap(r => {
-      println("Going to do warm-up.")
-      (1 to 200).foreach(i => r.send(r.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get)
-
       val a = (1 to 2000).par
       a.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(4))
 
       val durations = a.map(i => {
         if (i == 223) {
           println("deploy at 223")
-          r.deploy
-          r.deploy
-          r.deploy
+          r.deploy(30)
+          r.deploy(30)
+          r.deploy(30)
         }
         val start = System.nanoTime()
         val o = httpRpc.time {
           Try {
             if (i % 2 == 0) {
-              r.send(r.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get
+              r.send(ControllingRibbonHttpClient.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get
             } else {
-              r.send(r.PORCEDURE_makeCall, new Rec("CALL", i, "LLAC"), classOf[Rec]).get
+              r.send(ControllingRibbonHttpClient.PORCEDURE_makeCall, new Rec("CALL", i, "LLAC"), classOf[Rec]).get
             }
           }.toOption
         }

@@ -7,6 +7,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Path("/test")
@@ -83,7 +84,6 @@ public class TestResource {
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Post New York\" }";
     }
 
-
     @POST
     @Path("/call")
     @Consumes({MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
@@ -109,7 +109,13 @@ public class TestResource {
         return this.control(data);
     }
 
+    /**
+     *
+     * @param data  seems to come from client something like "\"1,12\"" for example.
+     * @return
+     */
     public String control(String data) {
+        System.out.println("!!!!!!!!!!control(data=" + data + ")");
         System.out.println("Control data " + data);
         if (data.startsWith("\"fail")) {
             Integer errorCode = Integer.valueOf(data.substring(1, data.length() - 1).split(" ")[1]);
@@ -117,34 +123,37 @@ public class TestResource {
             failCode.set(errorCode);
             return "{}";
         }
-        if (data.contains("4")) {
+        if (data.startsWith("\"4")) {
             this.sleepTime = 0;
             this.throwException = false;
             failCode.set(0);
             LOG.info("control is going to 4. All ok state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"ALL OK\" }";
         }
-        if (data.contains("3")) {
+        if (data.startsWith("\"3")) {
             this.sleepTime = 18000;
             LOG.info("control is going to 3. Overload state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"TIMEOUT SIMULATION\" }";
         }
-        if (data.contains("2")) {
+        if (data.startsWith("\"2")) {
             this.throwException = true;
             LOG.info("control is going to 2. DB down state.");
             return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"PROCESSING EXCEPTION SIMULATION\" }";
         }
-        if (data.contains("1")) {
-            LOG.info("control is going to 1. Restart (simulated deploy) state.");
+        if (data.startsWith("\"1")) {
+            System.out.println("data.startsWith(\"1\"):" + data);
+            String[] splitted = data.split(",");
+            int deploySleep = Integer.parseInt(splitted[1].replace("\"", ""));
+            LOG.info("control is going to 1. Restart (simulated deploy) state. Restart seconds: " + deploySleep);
             new Thread(() -> {
                 try {
-                    Thread.sleep(242);
+                    Thread.sleep(42);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                System.exit(91);
+                System.exit(deploySleep);
             }).start();
-            return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"DEPLOY SIMULATION\" }";
+            return "{ \"name\":\"XXX\", \"age\":" + deploySleep + ", \"city\":\"DEPLOY SIMULATION\" }";
         }
         return "{ \"name\":\"XXX\", \"age\":31, \"city\":\"XX!!XX!!XX\" }";
     }
