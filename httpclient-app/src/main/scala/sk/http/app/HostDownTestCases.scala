@@ -50,9 +50,13 @@ object HostDownTestCases extends TestHelperObject {
     ??? // TODO implement
   }
 
-  def serversTurningOff(testName: String, sender: SenderType[Rec, Rec]) = {
-    val results: Seq[Try[Rec]] = runTest(250, sender)
-    printReport(testName, results)
+  def serversTurningOff(testName: String, sender: SenderType[Rec, Rec], client: ControllingRibbonHttpClient[Rec, Rec]) = {
+    val resultBefore: Seq[Try[Rec]] = runTest(250, sender)
+    client.deploy(45)
+    val start = System.currentTimeMillis()
+    val resultOneDown: Seq[Try[Rec]] = runTest(250, sender)
+    //val resultBefore: Seq[Try[Rec]] = runTest(250, sender)
+    // TODO printReport(testName, results)
     ??? // TODO implement parallel shutting of servers down
   }
 
@@ -133,8 +137,8 @@ object HostDownTestCases extends TestHelperObject {
     serversStartingUpTest("serversStartingUpTest - Idempotent", senderIdempotent(client), client)
     serversStartingUpTest("serversStartingUpTest - NON-idempotent", senderNormal(client), client)
 
-    serversTurningOff("serversTurningOff - Idempotent", senderIdempotent(client))
-    serversTurningOff("serversTurningOff - NON-idempotent", senderNormal(client))
+    serversTurningOff("serversTurningOff - Idempotent", senderIdempotent(client), client)
+    serversTurningOff("serversTurningOff - NON-idempotent", senderNormal(client), client)
   }
 
   //type sender[R, T] = (procedureName: String , request: R, clazz: Class[T]) => T

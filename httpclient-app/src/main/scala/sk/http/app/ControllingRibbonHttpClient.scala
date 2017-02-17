@@ -21,8 +21,8 @@ class ControllingRibbonHttpClient[R, T](servers: String) extends RibbonHttpClien
     this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, ControllingRibbonHttpClient.CONTROL_DB_DOWN, classOf[String]).get()
   }.recover { case t: Throwable => t.getMessage }.get
 
-  def overload = Try {
-    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, ControllingRibbonHttpClient.CONTROL_OVERLOAD, classOf[String]).get()
+  def overload(processingTimeMs: Long) = Try {
+    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, s"${ControllingRibbonHttpClient.CONTROL_OVERLOAD},$processingTimeMs", classOf[String]).get()
   }.recover { case t: Throwable => t.getMessage }.get
 
   def ok = Try {
