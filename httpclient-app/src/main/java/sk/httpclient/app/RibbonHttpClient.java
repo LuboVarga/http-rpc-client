@@ -69,7 +69,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
         clientConfig.set(CommonClientConfigKey.InitializeNFLoadBalancer, true);
         clientConfig.set(CommonClientConfigKey.ListOfServers, servers);
-        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 0);
+        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 3);
         clientConfig.set(CommonClientConfigKey.MaxAutoRetries, 1);
         clientConfig.set(CommonClientConfigKey.EnableConnectionPool, true);
         clientConfig.set(CommonClientConfigKey.PoolMaxThreads, 50);

@@ -5,6 +5,7 @@ import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher;
+import com.netflix.hystrix.exception.HystrixBadRequestException;
 import com.netflix.hystrix.exception.HystrixRuntimeException;
 import com.netflix.hystrix.strategy.HystrixPlugins;
 import org.junit.BeforeClass;
@@ -31,50 +32,70 @@ public class ServiceErrorTests {
                 .convertDurationsTo(TimeUnit.MILLISECONDS)
                 .build();
         reporter.start(10, TimeUnit.SECONDS);
-
     }
 
+    /**
+     * 1 server from server list working, others return 500. All requests are idempotent and should go to this 1 remaining server.
+     */
+
     @Test
-    public void atLeast1Server() throws JsonProcessingException, ExecutionException, InterruptedException {
-        try {
-            client.sendIdempotent("/test/maybefail", "ok", Record.class).get();
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
+    public void remaining1ServerIdempotent() throws JsonProcessingException, ExecutionException, InterruptedException {
+        clearAllflags();
+        disableServer(2, "fail 500");
 
         int accumulator = 0;
         for (int i = 0; i < 10; i++) {
-            Record ok = client.sendIdempotent("/test/maybefail", "1", Record.class).get();
+            Record ok = client.sendIdempotentImmidiate("/test/maybefail", "1", Record.class);
             accumulator += ok.getAge();
         }
 
         assertEquals(10, accumulator);
     }
 
-    @Test
-    public void oneServerBadService() throws JsonProcessingException, ExecutionException, InterruptedException {
-        try {
-            client.sendIdempotentImmidiate("/test/control", "fail 500", Record.class);
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-
-        int accumulator = makeIdempotentRequests(120, 100);
-
-        assertEquals(120, accumulator);
+    private void sendControl(String cmd) throws JsonProcessingException {
+        client.sendNonIdempotentImmidiate("/test/control", cmd, Record.class);
     }
+
+    /**
+     * 1 server from server list working, others return 500. Requests sometimes fail, eventually opening the Circuit breaker
+     */
 
     @Test(expected = HystrixRuntimeException.class)
-    public void multipleServerBadService() throws JsonProcessingException, ExecutionException, InterruptedException {
-        try {
-            client.sendIdempotentImmidiate("/test/control", "fail 500", Record.class);
-            client.sendIdempotentImmidiate("/test/control", "fail 500", Record.class);
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
+    public void remaining1ServerNonIdempotent() throws JsonProcessingException, ExecutionException, InterruptedException {
+        clearAllflags();
+        disableServer(2, "fail 500");
 
-        makeNonIdempotentRequests(120, 100);
+        makeNonIdempotentRequests(120, 10);
     }
+
+    /**
+     * 1 server from server list working, others return 404. Requests fail with an exception
+     */
+    @Test(expected = HystrixBadRequestException.class)
+    public void noServerWorkingIdempotent() throws JsonProcessingException, ExecutionException, InterruptedException {
+        clearAllflags();
+        disableServer(3, "fail 404");
+
+        makeIdempotentRequests(10, 10);
+    }
+
+    private void disableServer(int times, String cmd) throws JsonProcessingException {
+        for (int i = 0; i < times; i++) {
+            sendControl(cmd);
+        }
+    }
+
+    /**
+     * 1 server from server list working, others return 404. Requests fail with an exception
+     */
+    @Test(expected = HystrixBadRequestException.class)
+    public void noServerWorkingNonIdempotent() throws JsonProcessingException, ExecutionException, InterruptedException {
+        clearAllflags();
+        disableServer(3, "fail 404");
+
+        makeNonIdempotentRequests(10, 10);
+    }
+
 
     private int makeIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
         int accumulator = 0;
@@ -89,7 +110,7 @@ public class ServiceErrorTests {
         return accumulator;
     }
 
-   private int makeNonIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
+    private int makeNonIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
         int accumulator = 0;
         Record ok;
 
@@ -100,6 +121,12 @@ public class ServiceErrorTests {
                 accumulator += ok.getAge();
         }
         return accumulator;
+    }
+
+    private void clearAllflags() throws InterruptedException, JsonProcessingException {
+        for (int i = 0; i < 50; i++) {
+            sendControl("4");
+        }
     }
 
 }
