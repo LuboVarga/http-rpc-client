@@ -16,6 +16,7 @@ import com.netflix.ribbon.http.HttpResourceGroup;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
+import org.apache.commons.lang.StringUtils;
 import rx.Observable;
 import rx.functions.Func1;
 
@@ -70,14 +71,16 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
         clientConfig.set(CommonClientConfigKey.InitializeNFLoadBalancer, true);
         clientConfig.set(CommonClientConfigKey.ListOfServers, servers);
-        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, 3);
+        clientConfig.set(CommonClientConfigKey.ConnectTimeout, 2000);
+        clientConfig.set(CommonClientConfigKey.ReadTimeout, 5000); //TODO read timeout
+        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, StringUtils.countMatches(servers, ","));
         clientConfig.set(CommonClientConfigKey.MaxAutoRetries, 1);
         clientConfig.set(CommonClientConfigKey.EnableConnectionPool, true);
         clientConfig.set(CommonClientConfigKey.PoolMaxThreads, 50);
         clientConfig.set(CommonClientConfigKey.PoolMinThreads, 42);
         clientConfig.set(CommonClientConfigKey.NFLoadBalancerPingClassName, "sk.httpclient.app.MyPinger");
         clientConfig.set(CommonClientConfigKey.PoolKeepAliveTime, 100000000);
-        clientConfig.set(CommonClientConfigKey.PoolKeepAliveTimeUnits, TimeUnit.SECONDS.toString()); //TODO ake su tu hodnoty?
+        clientConfig.set(CommonClientConfigKey.PoolKeepAliveTimeUnits, TimeUnit.SECONDS.toString());
         clientConfig.set(CommonClientConfigKey.MaxConnectionsPerHost, 20);
         clientConfig.set(CommonClientConfigKey.MaxTotalConnections, 70);
         clientConfig.set(CommonClientConfigKey.EnablePrimeConnections, true);
