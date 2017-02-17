@@ -1,3 +1,5 @@
+package sk.http.app
+
 import com.fasterxml.jackson.annotation.{JsonCreator, JsonProperty}
 
 /**

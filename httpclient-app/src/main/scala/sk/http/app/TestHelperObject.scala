@@ -1,3 +1,5 @@
+package sk.http.app
+
 import java.util.concurrent.TimeUnit
 
 import com.codahale.metrics.{ConsoleReporter, Metric}

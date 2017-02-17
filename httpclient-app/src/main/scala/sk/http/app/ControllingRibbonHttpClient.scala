@@ -1,3 +1,5 @@
+package sk.http.app
+
 import sk.httpclient.app.RibbonHttpClient
 
 import scala.util.Try

@@ -1,3 +1,5 @@
+package sk.http.app
+
 import java.util.concurrent.{Future, TimeUnit}
 
 import com.codahale.metrics.Metric
