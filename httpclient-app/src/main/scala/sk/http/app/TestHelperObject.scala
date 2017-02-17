@@ -67,26 +67,33 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
       case (i, procedureName) => {
         TimeUnit.MILLISECONDS.sleep(sleepTimeMs)
         //httpRpc.time(Try(sender(procedureName, new Rec("CALL " + procedureName, i, "LLAC"), classOf[T])))
-        httpRpc.time(Try(sender(procedureName, new Record("CALL " + procedureName, i, "LLAC"), classOf[Record])).map(x => {
-          println(x); x
-        }))
+        (procedureName, httpRpc.time(Try(sender(procedureName, new Record("CALL " + procedureName, i, "LLAC"), classOf[Record])).map(x => {
+          println(x)
+          x
+        })))
       }
     })
 
-  def printReport(testName: String, results: Seq[Try[T]]) = {
+  def printReport(testName: String, results: Seq[(String, Try[T])]) = {
     if (printMetrics) reporter.report()
     println("Five sample/random results:")
     scala.util.Random.shuffle(results)
       .take(5)
       .foreach(r => r match {
-        case x: Success[Record] => println("VYSLEDOK:" + x)
-        case x: Failure[Record] => println("VYSLEDOK ex:" + x.exception.printStackTrace(System.out))
-      }
-      )
+        case x: (String, Success[Record]) => println("VYSLEDOK:" + x)
+        case x: (String, Failure[Record]) => println("VYSLEDOK ex:" + x._1 + "\t"+ x._2.exception.printStackTrace(System.out))
+      })
 
-    val successRequest = results.count(t => t.isInstanceOf[Success[T]])
-    val failedRequest = results.count(t => t.isInstanceOf[Success[T]] == false)
-    println(s"${testName} finished. $successRequest|$failedRequest\n")
+    val resultsGrouped = results.groupBy(res => res match {
+      case s: (String, Success[T]) =>
+        (s._1, true)
+      case s: (String, Failure[T]) =>
+        (s._1, false)
+    })
+    val aggregated = resultsGrouped.map(g => g._1 -> g._2.aggregate(0)({(sum, r) => sum + r._2.map(_ => 1).getOrElse(0)}, { (p1, p2) => p1 + p2 }))
+
+    aggregated.foreach(x => println(s"${x._1._1}\t${x._1._2}\t: ${x._2}"))
+
     println("\t\t\t\t\tcall\trecord")
     printTableLine("countEmit\t\t\t")
     printTableLine("countExceptionsThrown")

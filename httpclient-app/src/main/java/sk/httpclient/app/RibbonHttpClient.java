@@ -46,7 +46,8 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private T convert(Class<T> clazz, ByteBuf buf) {
         if (clazz.equals(String.class)) {
-            //copy() is solving on CompositeByteBuf instance exception "java.lang.UnsupportedOperationException: direct buffer"
+            // copy() is solving on CompositeByteBuf instance exception "java.lang.UnsupportedOperationException: direct buffer"
+            // 46177 [rxnetty-nio-eventloop-3-1] ERROR io.netty.util.ResourceLeakDetector - LEAK: ByteBuf.release() was not called before it's garbage-collected. Enable advanced leak reporting to find out where the leak occurred. To enable advanced leak reporting, specify the JVM option '-Dio.netty.leakDetection.level=advanced' or call ResourceLeakDetector.setLevel() See http://netty.io/wiki/reference-counted-objects.html for more information.
             return (T) new String(buf.copy().array());
         }
         try {

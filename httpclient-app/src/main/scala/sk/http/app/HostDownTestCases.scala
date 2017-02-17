@@ -4,9 +4,6 @@ import java.util.concurrent.TimeUnit
 
 import sk.httpclient.app.Record
 
-import scala.collection.immutable.Seq
-import scala.util.Try
-
 /**
   * https://confluence.nike.sk/display/VVP/RPC+projekt?focusedCommentId=11535760#comment-11535760
   *
@@ -32,7 +29,7 @@ object HostDownTestCases extends TestHelperObject[Record, Record] {
   type T = Record
 
   def onlyOneServerRunningTest(testName: String, sender: SenderType[R, T]) = {
-    val results: Seq[Try[T]] = runTest(250, sender)
+    val results = runTest(250, sender)
     printReport(testName, results)
   }
 
@@ -45,17 +42,17 @@ object HostDownTestCases extends TestHelperObject[Record, Record] {
   }
 
   def serversTurningOff(testName: String, sender: SenderType[R, T], client: ControllingRibbonHttpClient[R, T]) = {
-    val resultBefore: Seq[Try[T]] = runTest(250, sender)
+    val resultBefore = runTest(250, sender)
     client.deploy(45)
     val start = System.currentTimeMillis()
-    val resultOneDown: Seq[Try[T]] = runTest(250, sender)
+    val resultOneDown = runTest(250, sender)
     //val resultBefore: Seq[Try[Rec]] = runTest(250, sender)
     // TODO printReport(testName, results)
     ??? // TODO implement parallel shutting of servers down
   }
 
   def noServerIsRunning(testName: String, sender: SenderType[R, T]) = {
-    val results: Seq[Try[T]] = runTest(250, sender)
+    val results = runTest(250, sender)
     printReport(testName, results)
   }
 
