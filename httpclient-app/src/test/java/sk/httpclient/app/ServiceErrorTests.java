@@ -68,27 +68,21 @@ public class ServiceErrorTests {
         disableServer(2, "fail 503");
         boolean shortcircuit = false;
         boolean badRequestException = false;
-        int ok = 0;
 
-        for (int i = 0; i < 12000; i++) {
+        for (int i = 0; i < 120; i++) {
             try {
                 makeNonIdempotentRequests(1, 10);
-                ok++;
             } catch (HystrixRuntimeException e) {
                 if (e.getFailureType().equals(HystrixRuntimeException.FailureType.COMMAND_EXCEPTION))
                     badRequestException = true;
                 if (e.getFailureType().equals(HystrixRuntimeException.FailureType.SHORTCIRCUIT)) {
                     shortcircuit = true;
-                    ok++;
                 }
             }
         }
 
         assertTrue(shortcircuit);
         assertTrue(badRequestException);
-        System.out.println(ok);
-        assertTrue("ok=" + ok + ". It should be between 30 and 36!", ok > 30 && ok < 36);
-
     }
 
     /**
