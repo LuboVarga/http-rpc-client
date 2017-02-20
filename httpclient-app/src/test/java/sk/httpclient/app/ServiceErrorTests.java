@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @Ignore
 public class ServiceErrorTests {
@@ -57,19 +58,35 @@ public class ServiceErrorTests {
     }
 
     /**
-     * 1 server from server list working, others return 500. Requests sometimes fail, eventually opening the Circuit breaker
+     * 1 server from server list working, others return 500. Sending non-idempotent requests which fail 66% of time.
+     * Eventually this opens the Circuit breaker
      */
 
-    @Test(expected = HystrixRuntimeException.class)
+    @Test
     public void remaining1ServerNonIdempotent() throws JsonProcessingException, ExecutionException, InterruptedException {
         clearAllflags();
         disableServer(2, "fail 500");
+        boolean shortcircuit = false;
+        boolean badRequestException = false;
 
-        makeNonIdempotentRequests(120, 10);
+        for (int i = 0; i < 100; i++) {
+            try {
+                makeNonIdempotentRequests(120, 10);
+            } catch (HystrixRuntimeException e) {
+                if (e.getFailureType().equals(HystrixRuntimeException.FailureType.COMMAND_EXCEPTION))
+                    badRequestException = true;
+                if (e.getFailureType().equals(HystrixRuntimeException.FailureType.SHORTCIRCUIT))
+                    shortcircuit = true;
+            }
+        }
+
+        assertTrue(shortcircuit);
+        assertTrue(badRequestException);
+
     }
 
     /**
-     * 1 server from server list working, others return 404. Requests fail with an exception
+     * 1 server from server list working, others return 404. Requests fail with an exception bacese it's a 4XX response.
      */
     @Test(expected = HystrixBadRequestException.class)
     public void noServerWorkingIdempotent() throws JsonProcessingException, ExecutionException, InterruptedException {
@@ -86,7 +103,7 @@ public class ServiceErrorTests {
     }
 
     /**
-     * 1 server from server list working, others return 404. Requests fail with an exception
+     * 1 server from server list working, others return 404. Requests fail with an exception bacese it's a 4XX response.
      */
     @Test(expected = HystrixBadRequestException.class)
     public void noServerWorkingNonIdempotent() throws JsonProcessingException, ExecutionException, InterruptedException {
