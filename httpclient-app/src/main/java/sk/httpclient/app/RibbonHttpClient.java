@@ -28,9 +28,9 @@ import java.util.concurrent.TimeUnit;
 public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     private static final Logger LOG = LoggerFactory.getLogger(RibbonHttpClient.class);
 
-    private static final int HYSTRIX_TIMEOUT_MS = 10000;
+    private static final int HYSTRIX_TIMEOUT_MS = 14000;
     private static final int CLIENT_CONNECT_TIMEOUT_MS = 2000;
-    private static final int CLIENT_READ_TIMEOUT_MS = 4000;
+    private static final int CLIENT_READ_TIMEOUT_MS = 2200;
 
     private static final String NAME = "sample-client";
     private final ObjectMapper mapperDefault = new ObjectMapper();
