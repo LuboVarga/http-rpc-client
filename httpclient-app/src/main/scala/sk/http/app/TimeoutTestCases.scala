@@ -2,10 +2,11 @@ package sk.http.app
 
 import java.util.concurrent.TimeUnit
 
+import com.netflix.hystrix.Hystrix
+import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher
+import com.netflix.hystrix.strategy.HystrixPlugins
 import io.netty.util.ResourceLeakDetector
 import sk.httpclient.app.Record
-
-import scala.util.Try
 
 /**
   * https://confluence.nike.sk/display/VVP/RPC+projekt?focusedCommentId=11535760#comment-11535760
@@ -31,20 +32,21 @@ object TimeoutTestCases extends TestHelperObject[Record, Record] {
   ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
   val servers = "http://localhost:8887,http://localhost:8888,http://localhost:8889"
 
-  def someOfServersTimeouting(testName: String, sender: SenderType[Record, Record], client: ControllingRibbonHttpClient[Record, Record], numberOfOkServers: Int) = {
+  def someOfServersTimeouting(testName: String, numberOfTestCalls: Int, sender: SenderType[Record, Record], client: ControllingRibbonHttpClient[Record, Record], numberOfOkServers: Int) = {
     //setup:
     {
       // make all servers ok (clear exceptions, etc).
-      (1 to 50).map(_ => client.ok)
+      (1 to 20).map(_ => client.ok)
       // make all servers timeout/overload
-      (1 to 50).map(_ => client.overload(45000))
+      (1 to 20).map(_ => client.overload(45000))
       // make desired number of servers respond after about 2 ms.
       (1 to numberOfOkServers).map(_ => client.overload(2))
     }
     val start = System.currentTimeMillis()
-    val results = runTest(200, sender)
+    val results = runTest(numberOfTestCalls, sender)
     val end = System.currentTimeMillis();
 
+    TimeUnit.SECONDS.sleep(1)
     printReport(testName, results)
     println(s"Total runtime (wall clock) was ${(end - start)} ms.")
   }
@@ -53,9 +55,9 @@ object TimeoutTestCases extends TestHelperObject[Record, Record] {
     //setup:
     {
       // make all servers ok (clear exceptions, etc).
-      (1 to 50).map(_ => client.ok)
+      (1 to 20).map(_ => client.ok)
       // make all servers timeout/overload
-      (1 to 50).map(_ => client.overload(45000))
+      (1 to 20).map(_ => client.overload(45000))
     }
     val start = System.currentTimeMillis()
     val resultsStart = runTest(10, sender)
@@ -69,6 +71,7 @@ object TimeoutTestCases extends TestHelperObject[Record, Record] {
     (1 to 15).map(_ => client.overload(2))
     val results = resultsRun4 ++ runTest(50, sender)
     val end = System.currentTimeMillis();
+    TimeUnit.SECONDS.sleep(1)
     printReport(testName, results)
     println(s"Total runtime (wall clock) was ${(end - start)} ms.")
   }
@@ -78,19 +81,32 @@ object TimeoutTestCases extends TestHelperObject[Record, Record] {
     // give ipinger time to fill in lbstatistics instance.
     TimeUnit.SECONDS.sleep(1)
 
-    someOfServersTimeouting("one server time-outing - Idempotent", senderIdempotent(client), client, 2)
-    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
-    someOfServersTimeouting("one server time-outing - NON-idempotent", senderNormal(client), client, 2)
-    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
+    val a = runTest(5, senderIdempotent(client))
+    printReport("DUMMY TEST, WARMUP", a)
 
-    someOfServersTimeouting("two server time-outing - Idempotent", senderIdempotent(client), client, 1)
-    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
-    someOfServersTimeouting("two server time-outing - NON-idempotent", senderNormal(client), client, 1)
-    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
+    someOfServersTimeouting("one server time-outing - NON-idempotent", 210, senderNormal(client), client, 2)
+    reset()
+    someOfServersTimeouting("one server time-outing - Idempotent", 180, senderIdempotent(client), client, 2)
+    reset()
+
+    someOfServersTimeouting("two server time-outing - NON-idempotent", 120, senderNormal(client), client, 1)
+    reset()
+    someOfServersTimeouting("two server time-outing - Idempotent", 170, senderIdempotent(client), client, 1)
+    reset()
 
     allOfServersTimeoutingStartWorkingLater("servers slowly stops time-outing - Idempotent", senderIdempotent(client), client)
-    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
+    reset()
     allOfServersTimeoutingStartWorkingLater("servers slowly stops time-outing - NON-idempotent", senderNormal(client), client)
-    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
+  }
+
+  def reset() = {
+    TimeUnit.MILLISECONDS.sleep(500)
+    import scala.collection.JavaConversions._
+    Hystrix.reset(7, TimeUnit.SECONDS)
+    TimeUnit.MILLISECONDS.sleep(500)
+    metricRegistry.getNames.map(metricRegistry.remove(_))
+    TimeUnit.MILLISECONDS.sleep(500)
+    HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
+    TimeUnit.MILLISECONDS.sleep(500)
   }
 }
