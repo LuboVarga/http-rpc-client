@@ -1,6 +1,9 @@
 package sk.httpclient.app;
 
-public class Record {
+import java.util.HashMap;
+import java.util.Map;
+
+public class Record implements Getable {
     private String name = "defaultName";
     private Integer age = 31;
     private String city = "default city";
@@ -41,9 +44,16 @@ public class Record {
     @Override
     public String toString() {
         return "Record{" +
-            "name='" + name + '\'' +
-            ", age=" + age +
-            ", city='" + city + '\'' +
-            '}';
+                "name='" + name + '\'' +
+                ", age=" + age +
+                ", city='" + city + '\'' +
+                '}';
+    }
+
+    @Override
+    public Map<String, String> toMap() {
+        Map<String, String> map = new HashMap<>();
+        map.put("age", "132");
+        return map;
     }
 }

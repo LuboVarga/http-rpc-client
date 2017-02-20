@@ -20,8 +20,8 @@ public class TestResource {
     @GET
     @Path("/record")
     @Produces(MediaType.APPLICATION_JSON)
-    public String json() {
-        LOG.debug("GET  on /test/record");
+    public String json(@QueryParam("age") int age) {
+        LOG.debug("GET  on /test/record with age: " + age);
         currentRecordBehavior();
         return "{ \"name\":\"John\", \"age\":31, \"city\":\"Get New York\" }";
     }

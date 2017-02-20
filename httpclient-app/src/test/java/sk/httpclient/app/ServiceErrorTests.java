@@ -46,14 +46,14 @@ public class ServiceErrorTests {
 
         int accumulator = 0;
         for (int i = 0; i < 10; i++) {
-            Record ok = client.sendIdempotentImmidiate("/test/maybefail", "1", Record.class);
+            Record ok = client.sendIdempotentImmidiate("/test/maybefail", new Record(), Record.class);
             accumulator += ok.getAge();
         }
 
         assertEquals(10, accumulator);
     }
 
-    private void sendControl(String cmd) throws JsonProcessingException {
+    private void sendControl(String cmd) throws JsonProcessingException, ExecutionException, InterruptedException {
         client.sendNonIdempotentImmidiate("/test/control", cmd, Record.class);
     }
 
@@ -68,27 +68,21 @@ public class ServiceErrorTests {
         disableServer(2, "fail 503");
         boolean shortcircuit = false;
         boolean badRequestException = false;
-        int ok = 0;
 
-        for (int i = 0; i < 12000; i++) {
+        for (int i = 0; i < 120; i++) {
             try {
                 makeNonIdempotentRequests(1, 10);
-                ok++;
             } catch (HystrixRuntimeException e) {
                 if (e.getFailureType().equals(HystrixRuntimeException.FailureType.COMMAND_EXCEPTION))
                     badRequestException = true;
                 if (e.getFailureType().equals(HystrixRuntimeException.FailureType.SHORTCIRCUIT)) {
                     shortcircuit = true;
-                    ok++;
                 }
             }
         }
 
         assertTrue(shortcircuit);
         assertTrue(badRequestException);
-        System.out.println(ok);
-        assertTrue("ok=" + ok + ". It should be between 30 and 36!", ok > 30 && ok < 36);
-
     }
 
     /**
@@ -102,7 +96,7 @@ public class ServiceErrorTests {
         makeIdempotentRequests(10, 10);
     }
 
-    private void disableServer(int times, String cmd) throws JsonProcessingException {
+    private void disableServer(int times, String cmd) throws JsonProcessingException, ExecutionException, InterruptedException {
         for (int i = 0; i < times; i++) {
             sendControl(cmd);
         }
@@ -120,12 +114,12 @@ public class ServiceErrorTests {
     }
 
 
-    private int makeIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
+    private int makeIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException, ExecutionException {
         int accumulator = 0;
         Record ok;
 
         for (int i = 0; i < requestCount; i++) {
-            ok = client.sendIdempotentImmidiate("/test/maybefail", "1", Record.class);
+            ok = client.sendIdempotentImmidiate("/test/maybefail", new Record(), Record.class);
             Thread.sleep(delay);
             if (ok != null)
                 accumulator += ok.getAge();
@@ -133,7 +127,7 @@ public class ServiceErrorTests {
         return accumulator;
     }
 
-    private int makeNonIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException {
+    private int makeNonIdempotentRequests(int requestCount, int delay) throws InterruptedException, JsonProcessingException, ExecutionException {
         int accumulator = 0;
         Record ok;
 
@@ -146,7 +140,7 @@ public class ServiceErrorTests {
         return accumulator;
     }
 
-    private void clearAllflags() throws InterruptedException, JsonProcessingException {
+    private void clearAllflags() throws InterruptedException, JsonProcessingException, ExecutionException {
         for (int i = 0; i < 50; i++) {
             sendControl("4");
         }

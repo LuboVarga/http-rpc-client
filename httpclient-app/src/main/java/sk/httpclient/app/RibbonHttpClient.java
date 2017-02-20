@@ -10,18 +10,21 @@ import com.netflix.hystrix.HystrixCommandGroupKey;
 import com.netflix.hystrix.HystrixCommandKey;
 import com.netflix.hystrix.HystrixCommandProperties;
 import com.netflix.hystrix.HystrixObservableCommand;
-import com.netflix.ribbon.*;
+import com.netflix.ribbon.ClientOptions;
+import com.netflix.ribbon.Ribbon;
+import com.netflix.ribbon.RibbonRequest;
+import com.netflix.ribbon.http.HttpRequestBuilder;
 import com.netflix.ribbon.http.HttpRequestTemplate;
 import com.netflix.ribbon.http.HttpResourceGroup;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.reactivex.netty.protocol.http.client.HttpClientResponse;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
-import rx.functions.Func1;
 
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -42,13 +45,8 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         mapperDefault.registerModule(new ParameterNamesModule());
         mapperDefault.registerModule(new Jdk8Module());
         //mapperDefault.registerModule(new JavaTimeModule());
-
         HttpResourceGroup resourceGroup = Ribbon.createHttpResourceGroup(NAME, config(servers));
         builder = resourceGroup.newTemplateBuilder("sample-client");
-    }
-
-    private Func1<HttpClientResponse<ByteBuf>, Observable<T>> getContent(Class<T> clazz) {
-        return x -> x.getContent().map(data -> convert(clazz, data));
     }
 
     private T convert(Class<T> clazz, ByteBuf buf) {
@@ -90,11 +88,11 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         final int nextServerRetry = StringUtils.countMatches(servers, ",");
         final int maxAutoRetries = 1;
         // CLIENT_CONNECT_TIMEOUT_MS is silently ignored in next equation as we expect to have pooled connection to each server
-        if(HYSTRIX_TIMEOUT_MS < (CLIENT_READ_TIMEOUT_MS * maxAutoRetries) * (nextServerRetry + 1)) {
+        if (HYSTRIX_TIMEOUT_MS < (CLIENT_READ_TIMEOUT_MS * maxAutoRetries) * (nextServerRetry + 1)) {
             LOG.warn("Timeouts are configured in such way, that if all tried servers will timeout, not all retries will " +
-                "be done, due to small hystrix timeout! Increase hystrix timeout, or lover retries or client read tiemout. " +
-                "Constants:{HYSTRIX_TIMEOUT_MS={};CLIENT_READ_TIMEOUT_MS={};maxAutoRetries={};nextServerRetry={}}",
-                HYSTRIX_TIMEOUT_MS, CLIENT_READ_TIMEOUT_MS, maxAutoRetries, nextServerRetry);
+                            "be done, due to small hystrix timeout! Increase hystrix timeout, or lover retries or client read tiemout. " +
+                            "Constants:{HYSTRIX_TIMEOUT_MS={};CLIENT_READ_TIMEOUT_MS={};maxAutoRetries={};nextServerRetry={}}",
+                    HYSTRIX_TIMEOUT_MS, CLIENT_READ_TIMEOUT_MS, maxAutoRetries, nextServerRetry);
         }
         clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, nextServerRetry);
         clientConfig.set(CommonClientConfigKey.MaxAutoRetries, maxAutoRetries);
@@ -114,42 +112,22 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     @Override
     @SuppressWarnings("unchecked")
     public Future<T> send(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-        return sendInternal(procedureName, request, clazz);
+        return sendPost(procedureName, request, clazz);
     }
 
     @Override
-    public Future<T> sendIdempotent(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-        return sendInternal(procedureName, request, clazz);
+    public Future<T> sendIdempotent(String procedureName, Getable request, Class<T> clazz) {
+        return sendGet(procedureName, request, clazz);
     }
 
-    public T sendNonIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-        HttpRequestTemplate<ByteBuf> service = builder
-                .withMethod("POST")
-                .withResponseValidator(getValidator(procedureName))
-                .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
-                .withUriTemplate(procedureName)
-                .build();
 
-        RibbonRequest<ByteBuf> req = service.requestBuilder()
-                .withContent(toJson(request)).build();
-
-        ByteBuf buf = req.execute();
-        return convert(clazz, buf);
+    public T sendNonIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
+        return sendPost(procedureName, request, clazz).get();
     }
 
     @Override
-    public T sendIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
-        HttpRequestTemplate<ByteBuf> service = builder
-                .withMethod("GET")
-                .withResponseValidator(getValidator(procedureName))
-                .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
-                .withUriTemplate(procedureName)
-                .build();
-
-        RibbonRequest<ByteBuf> req = service.requestBuilder().build();
-
-        ByteBuf buf = req.execute();
-        return convert(clazz, buf);
+    public T sendIdempotentImmidiate(String procedureName, Getable request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
+        return sendGet(procedureName, request, clazz).get();
     }
 
     private HystrixCommandProperties.Setter hystrixSettings() {
@@ -163,14 +141,13 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 .withMetricsRollingPercentileWindowInMilliseconds(10000)
                 .withMetricsRollingStatisticalWindowBuckets(10)
                 .withCircuitBreakerErrorThresholdPercentage(50)
-                // to have metrics refreshed http://stackoverflow.com/a/34799087/6034197
-                .withMetricsHealthSnapshotIntervalInMilliseconds(1000);
+                .withMetricsHealthSnapshotIntervalInMilliseconds(1000); // to have metrics refreshed http://stackoverflow.com/a/34799087/6034197
     }
 
-    private Future<T> sendInternal(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+    private Future<T> sendPost(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
         HttpRequestTemplate<ByteBuf> service = builder
                 .withMethod("POST")
-                .withResponseValidator(getValidator(procedureName))
+                .withResponseValidator(new Validator(procedureName))
                 .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
                 .withUriTemplate(procedureName)
                 .build();
@@ -186,6 +163,30 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 .toFuture();
     }
 
+    private Future<T> sendGet(String procedureName, Getable request, Class<T> clazz) {
+        HttpRequestTemplate<ByteBuf> service = builder
+                .withMethod("GET")
+                .withResponseValidator(new Validator(procedureName))
+                .withHystrixProperties(getHystrixSetter(procedureName)) //TODO maybe cache?
+                .withUriTemplate(procedureName)
+                .build();
+
+        HttpRequestBuilder<ByteBuf> req = service.requestBuilder();
+        addParams(req, request.toMap());
+
+        return req.build().toObservable()
+                .map(buff -> convert(clazz, buff))
+                .doOnError(throwable -> {
+                    throw new RuntimeException("Error while doing RPC!", throwable);
+                })
+                .toBlocking()
+                .toFuture();
+    }
+
+    private void addParams(HttpRequestBuilder<ByteBuf> req, Map<String, String> stringStringMap) {
+        stringStringMap.forEach(req::withRequestProperty);
+    }
+
     private HystrixObservableCommand.Setter getHystrixSetter(String procedureName) {
         return HystrixObservableCommand.Setter.
                 withGroupKey(key).
@@ -193,21 +194,6 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 andCommandPropertiesDefaults(hystrixSettings());
     }
 
-    private ResponseValidator<HttpClientResponse<ByteBuf>> getValidator(final String procedureName) {
-        return response -> {
-            if (response.getStatus().code() > 399 && response.getStatus().code() < 500 || response.getStatus().code() < 200) {
-                throw new UnsuccessfulResponseException(getMessage(procedureName, response));
-            }
-
-            if (response.getStatus().code() > 499) {
-                throw new ServerError(getMessage(procedureName, response));
-            }
-        };
-    }
-
-    private String getMessage(String procedureName, HttpClientResponse<ByteBuf> response) {
-        return "Server error with procedure name: " + procedureName + " status: " + response.getStatus().code() + " reason: " + response.getStatus().reasonPhrase();
-    }
 
     private Observable<ByteBuf> toJson(R request) throws JsonProcessingException {
         ByteBuf buf = Unpooled.copiedBuffer(mapperDefault.writeValueAsString(request).getBytes());

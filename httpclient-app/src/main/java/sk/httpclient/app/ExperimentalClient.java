@@ -17,6 +17,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
@@ -68,12 +69,12 @@ public class ExperimentalClient<R, T> implements MyHttpClient<R, T> {
     }
 
     @Override
-    public Future<T> sendIdempotent(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+    public Future<T> sendIdempotent(String procedureName, Getable request, Class<T> clazz) throws JsonProcessingException {
         return null;
     }
 
     @Override
-    public T sendIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+    public T sendIdempotentImmidiate(String procedureName, Getable request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
         return null;
     }
 
