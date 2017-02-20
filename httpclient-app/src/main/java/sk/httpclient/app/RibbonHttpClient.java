@@ -17,6 +17,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.functions.Func1;
 
@@ -24,9 +26,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
-    private static final int HYSTRIX_TIMEOUT_MS = 10000;
+    private static final Logger LOG = LoggerFactory.getLogger(RibbonHttpClient.class);
+
+    private static final int HYSTRIX_TIMEOUT_MS = 14000;
     private static final int CLIENT_CONNECT_TIMEOUT_MS = 2000;
-    private static final int CLIENT_READ_TIMEOUT_MS = 5000;
+    private static final int CLIENT_READ_TIMEOUT_MS = 2200;
 
     private static final String NAME = "sample-client";
     private final ObjectMapper mapperDefault = new ObjectMapper();
@@ -83,8 +87,17 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         clientConfig.set(CommonClientConfigKey.ListOfServers, servers);
         clientConfig.set(CommonClientConfigKey.ConnectTimeout, CLIENT_CONNECT_TIMEOUT_MS);
         clientConfig.set(CommonClientConfigKey.ReadTimeout, CLIENT_READ_TIMEOUT_MS);
-        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, StringUtils.countMatches(servers, ","));
-        clientConfig.set(CommonClientConfigKey.MaxAutoRetries, 1);
+        final int nextServerRetry = StringUtils.countMatches(servers, ",");
+        final int maxAutoRetries = 1;
+        // CLIENT_CONNECT_TIMEOUT_MS is silently ignored in next equation as we expect to have pooled connection to each server
+        if(HYSTRIX_TIMEOUT_MS < (CLIENT_READ_TIMEOUT_MS * maxAutoRetries) * (nextServerRetry + 1)) {
+            LOG.warn("Timeouts are configured in such way, that if all tried servers will timeout, not all retries will " +
+                "be done, due to small hystrix timeout! Increase hystrix timeout, or lover retries or client read tiemout. " +
+                "Constants:{HYSTRIX_TIMEOUT_MS={};CLIENT_READ_TIMEOUT_MS={};maxAutoRetries={};nextServerRetry={}}",
+                HYSTRIX_TIMEOUT_MS, CLIENT_READ_TIMEOUT_MS, maxAutoRetries, nextServerRetry);
+        }
+        clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, nextServerRetry);
+        clientConfig.set(CommonClientConfigKey.MaxAutoRetries, maxAutoRetries);
         clientConfig.set(CommonClientConfigKey.EnableConnectionPool, true);
         clientConfig.set(CommonClientConfigKey.PoolMaxThreads, 50);
         clientConfig.set(CommonClientConfigKey.PoolMinThreads, 42);
@@ -97,7 +110,6 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         clientConfig.set(CommonClientConfigKey.EnablePrimeConnections, true);
         return ClientOptions.from(clientConfig);
     }
-
 
     @Override
     @SuppressWarnings("unchecked")

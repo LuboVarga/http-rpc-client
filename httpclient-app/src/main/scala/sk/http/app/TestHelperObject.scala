@@ -80,7 +80,7 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
 
   def printReport(testName: String, results: Seq[(String, Try[T])]) = {
     if (printMetrics) reporter.report()
-    println("Five sample/random results:")
+    println(s"Five sample/random results from test ${Console.RED_B}${Console.BLACK}${testName}${Console.RESET}:")
     scala.util.Random.shuffle(results)
       .take(5)
       .foreach(r => r match {
@@ -96,7 +96,15 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
     //val aggregated = resultsGrouped.map(g => g._1 -> g._2.aggregate(0)({(sum, r) => sum + r._2.map(_ => 1).getOrElse(0)}, { (p1, p2) => p1 + p2 }))
     val aggregated = resultsGrouped.map(g => g._1 -> g._2.size)
 
-    aggregated.foreach(x => println(s"${x._1._1}\t${x._1._2}\t: ${x._2}"))
+    aggregated.foreach(x => {
+      val okOrNot = if (x._1._2) {
+        "OK "
+      } else {
+        Console.RED_B + "NOK" + Console.RESET
+      }
+      val path = String.format("%15.15s", x._1._1)
+      println(s"${okOrNot} ${path}: ${x._2}")
+    })
 
     println("\t\t\t\t\tcall\trecord")
     printTableLine("countEmit\t\t\t")

@@ -2,9 +2,7 @@ package sk.http.app
 
 import java.util.concurrent.TimeUnit
 
-import com.netflix.hystrix.strategy.HystrixPlugins
-import com.netflix.hystrix.strategy.properties.HystrixPropertiesFactory
-import com.netflix.hystrix._
+import io.netty.util.ResourceLeakDetector
 import sk.httpclient.app.Record
 
 import scala.util.Try
@@ -30,22 +28,11 @@ import scala.util.Try
   * Created by Ľubomír Varga on 14.2.2017.
   */
 object TimeoutTestCases extends TestHelperObject[Record, Record] {
+  ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
   val servers = "http://localhost:8887,http://localhost:8888,http://localhost:8889"
 
   def someOfServersTimeouting(testName: String, sender: SenderType[Record, Record], client: ControllingRibbonHttpClient[Record, Record], numberOfOkServers: Int) = {
-    {/*
-      // clear metrics
-      HystrixCommandMetrics.reset()
-      HystrixThreadPoolMetrics.reset()
-      HystrixCollapserMetrics.reset()
-      // clear collapsers
-      HystrixCollapser.reset()
-      // clear circuit breakers
-      HystrixCircuitBreaker.Factory.reset()
-      HystrixPlugins.reset()
-      HystrixPropertiesFactory.reset()*/
-    }
-      //setup:
+    //setup:
     {
       // make all servers ok (clear exceptions, etc).
       (1 to 50).map(_ => client.ok)
@@ -57,13 +44,9 @@ object TimeoutTestCases extends TestHelperObject[Record, Record] {
     val start = System.currentTimeMillis()
     val results = runTest(200, sender)
     val end = System.currentTimeMillis();
-    {
-      // make metrics accurate?
-      TimeUnit.SECONDS.sleep(21)
-      Try(sender("sadf", new Record("CALL " + "sadf", -88, "LLAC"), classOf[Record]))
-    }
+
     printReport(testName, results)
-    println(s"Total runtime (wall clock) was ${(end-start)} ms.")
+    println(s"Total runtime (wall clock) was ${(end - start)} ms.")
   }
 
   def allOfServersTimeoutingStartWorkingLater(testName: String, sender: SenderType[Record, Record], client: ControllingRibbonHttpClient[Record, Record]) = {
@@ -75,38 +58,39 @@ object TimeoutTestCases extends TestHelperObject[Record, Record] {
       (1 to 50).map(_ => client.overload(45000))
     }
     val start = System.currentTimeMillis()
-    val resultsStart = runTest(200, sender)
+    val resultsStart = runTest(10, sender)
     // make one more servers respond after about 2 ms.
     client.overload(2)
-    val resultsRun2 = resultsStart ++ runTest(200, sender)
+    val resultsRun2 = resultsStart ++ runTest(50, sender)
     client.overload(2)
-    val resultsRun3 = resultsRun2 ++ runTest(200, sender)
+    val resultsRun3 = resultsRun2 ++ runTest(50, sender)
     client.overload(2)
-    val resultsRun4 = resultsRun3 ++ runTest(200, sender)
+    val resultsRun4 = resultsRun3 ++ runTest(50, sender)
     (1 to 15).map(_ => client.overload(2))
-    val results= resultsRun4 ++ runTest(200, sender)
+    val results = resultsRun4 ++ runTest(50, sender)
     val end = System.currentTimeMillis();
-    {
-      // make metrics accurate?
-      TimeUnit.SECONDS.sleep(21)
-      Try(sender("sadf", new Record("CALL " + "sadf", -88, "LLAC"), classOf[Record]))
-    }
     printReport(testName, results)
-    println(s"Total runtime (wall clock) was ${(end-start)} ms.")
+    println(s"Total runtime (wall clock) was ${(end - start)} ms.")
   }
 
   def main(args: Array[String]): Unit = {
-    val client = new ControllingRibbonHttpClient[Record, Record]("http://localhost:8887,http://localhost:8888,http://localhost:8889")
+    val client = new ControllingRibbonHttpClient[Record, Record](servers)
     // give ipinger time to fill in lbstatistics instance.
     TimeUnit.SECONDS.sleep(1)
 
     someOfServersTimeouting("one server time-outing - Idempotent", senderIdempotent(client), client, 2)
+    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
     someOfServersTimeouting("one server time-outing - NON-idempotent", senderNormal(client), client, 2)
+    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
 
     someOfServersTimeouting("two server time-outing - Idempotent", senderIdempotent(client), client, 1)
+    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
     someOfServersTimeouting("two server time-outing - NON-idempotent", senderNormal(client), client, 1)
+    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
 
     allOfServersTimeoutingStartWorkingLater("servers slowly stops time-outing - Idempotent", senderIdempotent(client), client)
+    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
     allOfServersTimeoutingStartWorkingLater("servers slowly stops time-outing - NON-idempotent", senderNormal(client), client)
+    //Hystrix.reset(7, TimeUnit.SECONDS);HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
   }
 }
