@@ -48,25 +48,31 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     }
 
     private T convert(Class<T> clazz, ByteBuf buf) {
-        if (clazz.equals(String.class)) {
-            // copy() is solving on CompositeByteBuf instance exception "java.lang.UnsupportedOperationException: direct buffer"
-            // 46177 [rxnetty-nio-eventloop-3-1] ERROR io.netty.util.ResourceLeakDetector - LEAK: ByteBuf.release() was not called before it's garbage-collected. Enable advanced leak reporting to find out where the leak occurred. To enable advanced leak reporting, specify the JVM option '-Dio.netty.leakDetection.level=advanced' or call ResourceLeakDetector.setLevel() See http://netty.io/wiki/reference-counted-objects.html for more information.
-            return (T) new String(buf.copy().array());
-        }
         try {
-            byte[] bytes = new byte[buf.readableBytes()];
-            buf.readBytes(bytes);
-            T t;
-            try {
-                t = mapperDefault.readValue(bytes, clazz);
-            } catch (Exception ex) {
-                throw new RuntimeException("clazz=" + clazz + ";buf=" + new String(bytes) + "...;", ex);
+            if (clazz.equals(String.class)) {
+                // copy() is solving on CompositeByteBuf instance exception "java.lang.UnsupportedOperationException: direct buffer"
+                final ByteBuf byteBufCopy = buf.copy();
+                final T resultFinal = (T) new String(byteBufCopy.array());
+                byteBufCopy.release(); // possible leak when previous line throws an exception
+                return resultFinal;
             }
-            return t;
-        } catch (RuntimeException e) {
-            e.printStackTrace();
+            try {
+                byte[] bytes = new byte[buf.readableBytes()];
+                buf.readBytes(bytes);
+                T t;
+                try {
+                    t = mapperDefault.readValue(bytes, clazz);
+                } catch (Exception ex) {
+                    throw new RuntimeException("clazz=" + clazz + ";buf=" + new String(bytes) + "...;", ex);
+                }
+                return t;
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+            }
+            return null;
+        } finally {
+            buf.release();
         }
-        return null;
     }
 
     private ClientOptions config(String servers) {
