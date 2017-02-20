@@ -57,8 +57,7 @@ public class App {
         for (int i = 0; i < REQUESTSINSINGLERUN; i++) {
             long start = System.nanoTime();
             try (Timer.Context ctx = timer.time()) {
-                Future<Record> aaa = r.send("/test/record", new Record(), Record.class);
-                Record o = aaa.get();
+                r.sendIdempotentImmidiate("/test/record?age={age}", new Record(), Record.class);
             } catch (Exception ex) {
                 System.err.println("RPC call failed. ex=" + ex.getMessage());
                 ex.printStackTrace();
