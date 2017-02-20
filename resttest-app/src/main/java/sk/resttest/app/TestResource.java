@@ -173,6 +173,7 @@ public class TestResource {
             try {
                 Thread.sleep(this.sleepTime);
             } catch (InterruptedException e) {
+                LOG.warn("dummy sleep was interrupted.");
                 throw new RuntimeException("Interrupted in currentRecordBehavior! ", e);
             }
         }

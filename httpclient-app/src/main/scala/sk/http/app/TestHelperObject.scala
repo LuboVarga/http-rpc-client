@@ -10,12 +10,14 @@ import sk.httpclient.app.Record
 
 import scala.collection.JavaConversions._
 import scala.collection.immutable.Seq
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Random, Success, Try}
 
 /**
   * Created by Ľubomír Varga on 14.2.2017.
   */
 trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented {
+  private val rnd = Random
+  protected val printMetrics = false
   //type sender[R, T] = (procedureName: String , request: R, clazz: Class[T]) => T
   type SenderType[R, T] = (String, R, Class[T]) => T
 
@@ -31,8 +33,8 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
     ".countEmit",
     ".isCircuitBreakerOpen",
     ".latencyTotal_mean",
-    //".latencyTotal_percentile_90",
-    //".latencyExecute_percentile_90",
+    ".latencyTotal_percentile_90",
+    ".latencyExecute_percentile_90",
     ".latencyExecute_mean",
     ".countFallbackMissing",
     "http-rpc"
@@ -48,8 +50,6 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
   // Define a timer metric
   HystrixPlugins.getInstance().registerMetricsPublisher(new HystrixCodaHaleMetricsPublisher(metricRegistry))
 
-  protected val printMetrics = false
-
   protected val httpRpc = metrics.timer("http-rpc")
 
   /**
@@ -57,8 +57,10 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
     */
   protected val sleepTimeMs = 18
 
+  val printOnline = false
+
   def runTest(requestCount: Int, sender: SenderType[Record, Record]) = (1 to requestCount)
-    .map(i => if (i % 2 == 0) {
+    .map(i => if (rnd.nextInt() % 2 == 0) {
       (i, ControllingRibbonHttpClient.PORCEDURE_getRecord)
     } else {
       (i, ControllingRibbonHttpClient.PORCEDURE_makeCall)
@@ -68,7 +70,9 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
         TimeUnit.MILLISECONDS.sleep(sleepTimeMs)
         //httpRpc.time(Try(sender(procedureName, new Rec("CALL " + procedureName, i, "LLAC"), classOf[T])))
         (procedureName, httpRpc.time(Try(sender(procedureName, new Record("CALL " + procedureName, i, "LLAC"), classOf[Record])).map(x => {
-          println(x)
+          if (printOnline) {
+            println(x)
+          }
           x
         })))
       }
@@ -81,7 +85,7 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
       .take(5)
       .foreach(r => r match {
         case (paramName: String, succ: Success[Record]) => println("VYSLEDOK:" + (paramName, succ))
-        case (paramName: String, fail: Failure[Record]) => println("VYSLEDOK ex:" + paramName + "\t"+ fail.exception.printStackTrace(System.out))
+        case (paramName: String, fail: Failure[Record]) => println("VYSLEDOK ex:" + paramName + "\t" + fail.exception.printStackTrace(System.out))
       })
 
     val resultsGrouped = results.groupBy(res => (res._1, res._2.isSuccess))
@@ -109,8 +113,8 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
   }
 
   def printTableLine(metricsType: String) = {
-    val trimmed = metricsType.trim
-    println(s"${metricsType}\t${getValueForMetricsNameContaining("." + trimmed, "call").head._2.getValue}\t\t${getValueForMetricsNameContaining("." + trimmed, "record").head._2.getValue}")
+    val trimmedANdPrefixed = "." + metricsType.trim
+    println(s"${metricsType}\t${getValueForMetricsNameContaining(trimmedANdPrefixed, "call").head._2.getValue}\t\t${getValueForMetricsNameContaining(trimmedANdPrefixed, "record").head._2.getValue}")
   }
 
   def getValueForMetricsNameContaining(stringToContain: String*) = {
@@ -126,6 +130,5 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
         }
         numberOfContainedStrings == stringToContain.length
       })
-    //.map(x => println(s"On ${x._1} there was ${x._2.getValue}"))
   }
 }
