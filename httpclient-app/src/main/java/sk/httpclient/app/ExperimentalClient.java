@@ -64,16 +64,6 @@ public class ExperimentalClient<R, T> implements MyHttpClient<R, T> {
 
 
     @Override
-    public Future<T> send(String procedureName, R request, Class<T> clazz) {
-        return build.submit(server -> makeCall(server, procedureName, clazz)).toBlocking().toFuture();
-    }
-
-    @Override
-    public Future<T> sendIdempotent(String procedureName, Getable request, Class<T> clazz) throws JsonProcessingException {
-        return null;
-    }
-
-    @Override
     public T sendIdempotentImmidiate(String procedureName, Getable request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
         return null;
     }

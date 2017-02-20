@@ -80,6 +80,7 @@ object TimeoutTestCases extends TestHelperObject[Record, Record] {
     val client = new ControllingRibbonHttpClient[Record, Record](servers)
     // give ipinger time to fill in lbstatistics instance.
     TimeUnit.SECONDS.sleep(1)
+    (1 to 50).map(_ => client.ok)
 
     val a = runTest(5, senderIdempotent(client))
     printReport("DUMMY TEST, WARMUP", a)

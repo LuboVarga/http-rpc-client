@@ -109,25 +109,13 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         return ClientOptions.from(clientConfig);
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public Future<T> send(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+    public T sendNonIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
         return sendPost(procedureName, request, clazz);
     }
 
     @Override
-    public Future<T> sendIdempotent(String procedureName, Getable request, Class<T> clazz) {
-        return sendGet(procedureName, request, clazz);
-    }
-
-
-    public T sendNonIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
-        return sendPost(procedureName, request, clazz).get();
-    }
-
-    @Override
     public T sendIdempotentImmidiate(String procedureName, Getable request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
-        return sendGet(procedureName, request, clazz).get();
+        return sendGet(procedureName, request, clazz);
     }
 
     private HystrixCommandProperties.Setter hystrixSettings() {
@@ -144,7 +132,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 .withMetricsHealthSnapshotIntervalInMilliseconds(1000); // to have metrics refreshed http://stackoverflow.com/a/34799087/6034197
     }
 
-    private Future<T> sendPost(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
+    private T sendPost(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
         HttpRequestTemplate<ByteBuf> service = builder
                 .withMethod("POST")
                 .withResponseValidator(new Validator(procedureName))
@@ -153,17 +141,10 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 .build();
 
         RibbonRequest<ByteBuf> req = service.requestBuilder().withContent(toJson(request)).build();
-
-        return req.toObservable()
-                .map(buff -> convert(clazz, buff))
-                .doOnError(throwable -> {
-                    throw new RuntimeException("Error while doing RPC!", throwable);
-                })
-                .toBlocking()
-                .toFuture();
+        return convert(clazz, req.execute());
     }
 
-    private Future<T> sendGet(String procedureName, Getable request, Class<T> clazz) {
+    private T sendGet(String procedureName, Getable request, Class<T> clazz) {
         HttpRequestTemplate<ByteBuf> service = builder
                 .withMethod("GET")
                 .withResponseValidator(new Validator(procedureName))
@@ -174,13 +155,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         HttpRequestBuilder<ByteBuf> req = service.requestBuilder();
         addParams(req, request.toMap());
 
-        return req.build().toObservable()
-                .map(buff -> convert(clazz, buff))
-                .doOnError(throwable -> {
-                    throw new RuntimeException("Error while doing RPC!", throwable);
-                })
-                .toBlocking()
-                .toFuture();
+        return convert(clazz, req.build().execute());
     }
 
     private void addParams(HttpRequestBuilder<ByteBuf> req, Map<String, String> stringStringMap) {

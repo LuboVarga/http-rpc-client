@@ -65,11 +65,11 @@ public class ServiceErrorTests {
     @Test
     public void remaining1ServerNonIdempotent() throws JsonProcessingException, ExecutionException, InterruptedException {
         clearAllflags();
-        disableServer(2, "fail 503");
+        disableServer(2, "fail 500");
         boolean shortcircuit = false;
         boolean badRequestException = false;
 
-        for (int i = 0; i < 120; i++) {
+        for (int i = 0; i < 1200; i++) {
             try {
                 makeNonIdempotentRequests(1, 10);
             } catch (HystrixRuntimeException e) {
@@ -108,7 +108,7 @@ public class ServiceErrorTests {
     @Test(expected = HystrixBadRequestException.class)
     public void noServerWorkingNonIdempotent() throws JsonProcessingException, ExecutionException, InterruptedException {
         clearAllflags();
-        disableServer(3, "fail 404");
+        // disableServer(3, "fail 404");
 
         makeNonIdempotentRequests(10, 10);
     }
