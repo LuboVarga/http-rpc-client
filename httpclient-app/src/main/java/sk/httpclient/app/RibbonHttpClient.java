@@ -24,6 +24,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
+    private static final int HYSTRIX_TIMEOUT_MS = 10000;
+    private static final int CLIENT_CONNECT_TIMEOUT_MS = 2000;
+    private static final int CLIENT_READ_TIMEOUT_MS = 5000;
 
     private static final String NAME = "sample-client";
     private final ObjectMapper mapperDefault = new ObjectMapper();
@@ -72,8 +75,8 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
         clientConfig.set(CommonClientConfigKey.InitializeNFLoadBalancer, true);
         clientConfig.set(CommonClientConfigKey.ListOfServers, servers);
-        clientConfig.set(CommonClientConfigKey.ConnectTimeout, 2000);
-        clientConfig.set(CommonClientConfigKey.ReadTimeout, 5000); //TODO read timeout
+        clientConfig.set(CommonClientConfigKey.ConnectTimeout, CLIENT_CONNECT_TIMEOUT_MS);
+        clientConfig.set(CommonClientConfigKey.ReadTimeout, CLIENT_READ_TIMEOUT_MS);
         clientConfig.set(CommonClientConfigKey.MaxAutoRetriesNextServer, StringUtils.countMatches(servers, ","));
         clientConfig.set(CommonClientConfigKey.MaxAutoRetries, 1);
         clientConfig.set(CommonClientConfigKey.EnableConnectionPool, true);
@@ -132,7 +135,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
 
     private HystrixCommandProperties.Setter hystrixSettings() {
         return HystrixCommandProperties.Setter()
-                .withExecutionTimeoutInMilliseconds(10000)
+                .withExecutionTimeoutInMilliseconds(HYSTRIX_TIMEOUT_MS)
                 .withCircuitBreakerEnabled(true)
                 .withCircuitBreakerSleepWindowInMilliseconds(10000)
                 .withMetricsRollingStatisticalWindowInMilliseconds(10000)
