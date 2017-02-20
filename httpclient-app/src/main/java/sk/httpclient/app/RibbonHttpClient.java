@@ -143,7 +143,9 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
                 .withMetricsRollingPercentileEnabled(true)
                 .withMetricsRollingPercentileWindowInMilliseconds(10000)
                 .withMetricsRollingStatisticalWindowBuckets(10)
-                .withCircuitBreakerErrorThresholdPercentage(5); //TODO set to 50
+                .withCircuitBreakerErrorThresholdPercentage(50)
+                // to have metrics refreshed http://stackoverflow.com/a/34799087/6034197
+                .withMetricsHealthSnapshotIntervalInMilliseconds(1000);
     }
 
     private Future<T> sendInternal(String procedureName, R request, Class<T> clazz) throws JsonProcessingException {
