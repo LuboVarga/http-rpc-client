@@ -88,6 +88,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         clientConfig.set(CommonClientConfigKey.MaxConnectionsPerHost, 20);
         clientConfig.set(CommonClientConfigKey.MaxTotalConnections, 70);
         clientConfig.set(CommonClientConfigKey.EnablePrimeConnections, true);
+        clientConfig.set(CommonClientConfigKey.EnablePrimeConnections, true);
         return ClientOptions.from(clientConfig);
     }
 

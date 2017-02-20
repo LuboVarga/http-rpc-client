@@ -3,6 +3,7 @@ package sk.http.app
 import java.util.concurrent.TimeUnit
 
 import com.codahale.metrics.{ConsoleReporter, Metric}
+import com.fasterxml.jackson.annotation.{JsonCreator, JsonProperty}
 import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher
 import com.netflix.hystrix.strategy.HystrixPlugins
 import nl.grons.metrics.scala.Implicits.functionToMetricFilter
