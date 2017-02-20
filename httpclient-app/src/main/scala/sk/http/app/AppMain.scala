@@ -8,6 +8,7 @@ import com.netflix.hystrix.strategy.HystrixPlugins
 import nl.grons.metrics.scala.Implicits.functionToMetricFilter
 import org.apache.commons.math3.stat.descriptive.SynchronizedSummaryStatistics
 import org.apache.commons.math3.stat.descriptive.rank.Percentile
+import sk.httpclient.app.Record
 
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.Try
@@ -44,7 +45,7 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
     val p = new Percentile(95.0)
     //val r = new RibbonHttpClient[Rec, Rec]("localhost:8887,localhost:8888,localhost:8889")
 
-    val clients = (1 to 1).map(_ => new ControllingRibbonHttpClient[Rec, Rec]("http://localhost:8887,http://localhost:8888,http://localhost:8889")).par
+    val clients = (1 to 1).map(_ => new ControllingRibbonHttpClient[Record, Record]("http://localhost:8887,http://localhost:8888,http://localhost:8889")).par
     clients.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(50))
     val allDurations = clients.flatMap(r => {
       val a = (1 to 2000).par
@@ -61,9 +62,9 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
         val o = httpRpc.time {
           Try {
             if (i % 2 == 0) {
-              r.send(ControllingRibbonHttpClient.PORCEDURE_getRecord, new Rec("", i, ""), classOf[Rec]).get
+              r.send(ControllingRibbonHttpClient.PORCEDURE_getRecord, new Record("", i, ""), classOf[Record]).get
             } else {
-              r.send(ControllingRibbonHttpClient.PORCEDURE_makeCall, new Rec("CALL", i, "LLAC"), classOf[Rec]).get
+              r.send(ControllingRibbonHttpClient.PORCEDURE_makeCall, new Record("CALL", i, "LLAC"), classOf[Record]).get
             }
           }.toOption
         }

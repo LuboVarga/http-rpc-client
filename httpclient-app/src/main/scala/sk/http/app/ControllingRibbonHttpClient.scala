@@ -14,19 +14,19 @@ class ControllingRibbonHttpClient[R, T](servers: String) extends RibbonHttpClien
   val controlClient = new RibbonHttpClient[String, String](servers)
 
   def deploy(deployTimeInSeconds: Int) = Try {
-    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, s"${ControllingRibbonHttpClient.CONTROL_DEPLOY},$deployTimeInSeconds", classOf[String]).get()
+    this.controlClient.sendNonIdempotentImmidiate(ControllingRibbonHttpClient.PORCEDURE_control, s"${ControllingRibbonHttpClient.CONTROL_DEPLOY},$deployTimeInSeconds", classOf[String])
   }.recover { case t: Throwable => t.printStackTrace(); t.getMessage }.get
 
   def dbDown = Try {
-    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, ControllingRibbonHttpClient.CONTROL_DB_DOWN, classOf[String]).get()
+    this.controlClient.sendNonIdempotentImmidiate(ControllingRibbonHttpClient.PORCEDURE_control, ControllingRibbonHttpClient.CONTROL_DB_DOWN, classOf[String])
   }.recover { case t: Throwable => t.getMessage }.get
 
   def overload(processingTimeMs: Long) = Try {
-    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, s"${ControllingRibbonHttpClient.CONTROL_OVERLOAD},$processingTimeMs", classOf[String]).get()
+    this.controlClient.sendNonIdempotentImmidiate(ControllingRibbonHttpClient.PORCEDURE_control, s"${ControllingRibbonHttpClient.CONTROL_OVERLOAD},$processingTimeMs", classOf[String])
   }.recover { case t: Throwable => t.getMessage }.get
 
   def ok = Try {
-    this.controlClient.send(ControllingRibbonHttpClient.PORCEDURE_control, ControllingRibbonHttpClient.CONTROL_OK, classOf[String]).get()
+    this.controlClient.sendNonIdempotentImmidiate(ControllingRibbonHttpClient.PORCEDURE_control, ControllingRibbonHttpClient.CONTROL_OK, classOf[String])
   }.recover { case t: Throwable => t.getMessage }.get
 }
 

@@ -123,7 +123,7 @@ public class TestResource {
         if (data.startsWith("\"fail")) {
             Integer errorCode = Integer.valueOf(data.substring(1, data.length() - 1).split(" ")[1]);
             failCode.set(errorCode);
-            LOG.info("\tcontroll have set to fail with errorCode={}.", errorCode);
+            LOG.info("\tcontrol have set to fail with errorCode={}.", errorCode);
             return "{}";
         }
         if (data.startsWith("\"4")) {
