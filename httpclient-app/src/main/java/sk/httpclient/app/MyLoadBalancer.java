@@ -2,10 +2,14 @@ package sk.httpclient.app;
 
 import com.netflix.loadbalancer.Server;
 import com.netflix.loadbalancer.ZoneAwareLoadBalancer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class MyLoadBalancer extends ZoneAwareLoadBalancer {
+    private static final Logger LOG = LoggerFactory.getLogger(MyLoadBalancer.class);
+
     @Override
     public void addServers(List<Server> newServers) {
         super.addServers(newServers);
@@ -15,7 +19,7 @@ public class MyLoadBalancer extends ZoneAwareLoadBalancer {
     public Server chooseServer(Object key) {
         try {
             Server server = super.chooseServer(key);
-            //System.out.println("choosing: " + (server == null ? "server is null " : server.getPort()));
+            LOG.trace("choosing: {}", (server == null ? "server is null " : server.getPort()));
             return server;
         } catch (NullPointerException ex) {
             System.out.println("NPE!!!");
