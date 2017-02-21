@@ -1,4 +1,4 @@
-package sk.httpclient.app;
+package sk.httpclient.client;
 
 
 import java.util.Map;

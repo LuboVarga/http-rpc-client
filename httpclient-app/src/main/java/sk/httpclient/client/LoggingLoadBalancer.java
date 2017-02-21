@@ -1,4 +1,4 @@
-package sk.httpclient.app;
+package sk.httpclient.client;
 
 import com.netflix.loadbalancer.Server;
 import com.netflix.loadbalancer.ZoneAwareLoadBalancer;
@@ -7,8 +7,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public class MyLoadBalancer extends ZoneAwareLoadBalancer {
-    private static final Logger LOG = LoggerFactory.getLogger(MyLoadBalancer.class);
+public class LoggingLoadBalancer extends ZoneAwareLoadBalancer {
+    private static final Logger LOG = LoggerFactory.getLogger(LoggingLoadBalancer.class);
 
     @Override
     public void addServers(List<Server> newServers) {
@@ -17,14 +17,16 @@ public class MyLoadBalancer extends ZoneAwareLoadBalancer {
 
     @Override
     public Server chooseServer(Object key) {
+        Server server = null;
         try {
-            Server server = super.chooseServer(key);
-            LOG.trace("choosing: {}", (server == null ? "server is null " : server.getPort()));
+            server = super.chooseServer(key);
+            LOG.trace("choosing: {}", server);
             return server;
         } catch (NullPointerException ex) {
-            System.out.println("NPE!!!");
-            return null;
+            LOG.error("choosing: " + server + " returning null as chosen server", ex);
         }
+
+        return null;
     }
 
     @Override

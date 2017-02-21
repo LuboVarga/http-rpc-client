@@ -7,6 +7,7 @@ import com.netflix.client.ClientException;
 import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher;
 import com.netflix.hystrix.strategy.HystrixPlugins;
 import org.apache.commons.math3.stat.descriptive.SynchronizedSummaryStatistics;
+import sk.httpclient.client.RibbonHttpClient;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -57,7 +58,7 @@ public class App {
         for (int i = 0; i < REQUESTSINSINGLERUN; i++) {
             long start = System.nanoTime();
             try (Timer.Context ctx = timer.time()) {
-                r.sendIdempotentImmidiate("/test/record?age={age}", new Record(), Record.class);
+                r.sendQuery("/test/record?age={age}", new Record(), Record.class);
             } catch (Exception ex) {
                 System.err.println("RPC call failed. ex=" + ex.getMessage());
                 ex.printStackTrace();

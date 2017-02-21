@@ -63,9 +63,9 @@ object AppMain extends nl.grons.metrics.scala.DefaultInstrumented {
         val o = httpRpc.time {
           Try {
             if (i % 2 == 0) {
-              r.sendNonIdempotentImmidiate(ControllingRibbonHttpClient.PORCEDURE_getRecord, new Record("", i, ""), classOf[Record])
+              r.sendCommand(ControllingRibbonHttpClient.PORCEDURE_getRecord, new Record("", i, ""), classOf[Record])
             } else {
-              r.sendNonIdempotentImmidiate(ControllingRibbonHttpClient.PORCEDURE_makeCall, new Record("CALL", i, "LLAC"), classOf[Record])
+              r.sendCommand(ControllingRibbonHttpClient.PORCEDURE_makeCall, new Record("CALL", i, "LLAC"), classOf[Record])
             }
           }.toOption
         }

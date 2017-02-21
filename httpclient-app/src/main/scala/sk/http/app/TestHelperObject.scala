@@ -6,7 +6,8 @@ import com.codahale.metrics.{ConsoleReporter, Metric}
 import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher
 import com.netflix.hystrix.strategy.HystrixPlugins
 import nl.grons.metrics.scala.Implicits.functionToMetricFilter
-import sk.httpclient.app.{Getable, Record}
+import sk.httpclient.app.Record
+import sk.httpclient.client.Getable
 
 import scala.collection.JavaConversions._
 import scala.collection.immutable.Seq
@@ -21,9 +22,9 @@ trait TestHelperObject[R, T] extends nl.grons.metrics.scala.DefaultInstrumented 
   //type sender[R, T] = (procedureName: String , request: R, clazz: Class[T]) => T
   type SenderType[R, T] = (String, R with Getable, Class[T]) => T
 
-  def senderIdempotent[R, T](client: ControllingRibbonHttpClient[R, T]): SenderType[R, T] = (procedureName: String, request: Getable, clazz: Class[T]) => client.sendIdempotentImmidiate(procedureName, request, clazz)
+  def senderIdempotent[R, T](client: ControllingRibbonHttpClient[R, T]): SenderType[R, T] = (procedureName: String, request: Getable, clazz: Class[T]) => client.sendQuery(procedureName, request, clazz)
 
-  def senderNormal[R, T](client: ControllingRibbonHttpClient[R, T]): SenderType[R, T] = (procedureName: String, request: R, clazz: Class[T]) => client.sendNonIdempotentImmidiate(procedureName, request, clazz)
+  def senderNormal[R, T](client: ControllingRibbonHttpClient[R, T]): SenderType[R, T] = (procedureName: String, request: R, clazz: Class[T]) => client.sendCommand(procedureName, request, clazz)
 
   val interestingMetrics = Seq(
     ".errorPercentage", // real percentage of failed requests in given time window.

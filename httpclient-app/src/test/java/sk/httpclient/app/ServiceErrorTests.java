@@ -11,6 +11,7 @@ import com.netflix.hystrix.strategy.HystrixPlugins;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+import sk.httpclient.client.RibbonHttpClient;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -46,7 +47,7 @@ public class ServiceErrorTests {
 
         int accumulator = 0;
         for (int i = 0; i < 10; i++) {
-            Record ok = client.sendIdempotentImmidiate("/test/maybefail", new Record(), Record.class);
+            Record ok = client.sendQuery("/test/maybefail", new Record(), Record.class);
             accumulator += ok.getAge();
         }
 
@@ -54,7 +55,7 @@ public class ServiceErrorTests {
     }
 
     private void sendControl(String cmd) throws JsonProcessingException, ExecutionException, InterruptedException {
-        client.sendNonIdempotentImmidiate("/test/control", cmd, Record.class);
+        client.sendCommand("/test/control", cmd, Record.class);
     }
 
     /**
@@ -119,7 +120,7 @@ public class ServiceErrorTests {
         Record ok;
 
         for (int i = 0; i < requestCount; i++) {
-            ok = client.sendIdempotentImmidiate("/test/maybefail", new Record(), Record.class);
+            ok = client.sendQuery("/test/maybefail", new Record(), Record.class);
             Thread.sleep(delay);
             if (ok != null)
                 accumulator += ok.getAge();
@@ -132,7 +133,7 @@ public class ServiceErrorTests {
         Record ok;
 
         for (int i = 0; i < requestCount; i++) {
-            ok = client.sendNonIdempotentImmidiate("/test/maybefail", "1", Record.class);
+            ok = client.sendCommand("/test/maybefail", "1", Record.class);
             Thread.sleep(delay);
             if (ok != null)
                 accumulator += ok.getAge();

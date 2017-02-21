@@ -1,4 +1,4 @@
-package sk.httpclient.app;
+package sk.httpclient.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,13 +22,13 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import sk.httpclient.RpcClient;
 
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
+public class RibbonHttpClient<R, T> implements RpcClient<R, T> {
     private static final Logger LOG = LoggerFactory.getLogger(RibbonHttpClient.class);
 
     private static final int HYSTRIX_TIMEOUT_MS = 14000;
@@ -80,7 +80,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
     private ClientOptions config(String servers) {
         IClientConfig clientConfig = IClientConfig.Builder.newBuilder("sample-client").build();
 
-        clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.app.MyLoadBalancer");
+        clientConfig.set(CommonClientConfigKey.NFLoadBalancerClassName, "sk.httpclient.client.LoggingLoadBalancer");
         clientConfig.set(CommonClientConfigKey.InitializeNFLoadBalancer, true);
         clientConfig.set(CommonClientConfigKey.ListOfServers, servers);
         clientConfig.set(CommonClientConfigKey.ConnectTimeout, CLIENT_CONNECT_TIMEOUT_MS);
@@ -99,7 +99,7 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         clientConfig.set(CommonClientConfigKey.EnableConnectionPool, true);
         clientConfig.set(CommonClientConfigKey.PoolMaxThreads, 50);
         clientConfig.set(CommonClientConfigKey.PoolMinThreads, 42);
-        clientConfig.set(CommonClientConfigKey.NFLoadBalancerPingClassName, "sk.httpclient.app.MyPinger");
+        clientConfig.set(CommonClientConfigKey.NFLoadBalancerPingClassName, "sk.httpclient.client.LoggingPinger");
         clientConfig.set(CommonClientConfigKey.PoolKeepAliveTime, 100000000);
         clientConfig.set(CommonClientConfigKey.PoolKeepAliveTimeUnits, TimeUnit.SECONDS.toString());
         clientConfig.set(CommonClientConfigKey.MaxConnectionsPerHost, 20);
@@ -109,12 +109,12 @@ public class RibbonHttpClient<R, T> implements MyHttpClient<R, T> {
         return ClientOptions.from(clientConfig);
     }
 
-    public T sendNonIdempotentImmidiate(String procedureName, R request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
+    public T sendCommand(String procedureName, R request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
         return sendPost(procedureName, request, clazz);
     }
 
     @Override
-    public T sendIdempotentImmidiate(String procedureName, Getable request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
+    public T sendQuery(String procedureName, Getable request, Class<T> clazz) throws JsonProcessingException, ExecutionException, InterruptedException {
         return sendGet(procedureName, request, clazz);
     }
 

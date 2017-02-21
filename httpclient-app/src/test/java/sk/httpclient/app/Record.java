@@ -1,5 +1,7 @@
 package sk.httpclient.app;
 
+import sk.httpclient.client.Getable;
+
 import java.util.HashMap;
 import java.util.Map;
 
