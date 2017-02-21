@@ -59,7 +59,7 @@ object HostDownTestCases extends TestHelperObject[Record, Record] {
   def main(args: Array[String]): Unit = {
     val client = new ControllingRibbonHttpClient[R, T]("http://localhost:8887,http://localhost:8888,http://localhost:8889")
     val clientAllOff = new ControllingRibbonHttpClient[R, T]("http://localhost:554,http://localhost:555,http://localhost:556")
-    val clientOneRunningServer = new ControllingRibbonHttpClient[R, T]("http://localhost:8888,http://localhost:555,http://localhost:556")
+    val clientOneRunningServer = new ControllingRibbonHttpClient[R, T]("http://localhost:555,http://localhost:8888,http://localhost:556")
     // give ipinger time to fill in lbstatistics instance.
     TimeUnit.SECONDS.sleep(1)
 
