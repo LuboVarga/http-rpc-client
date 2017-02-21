@@ -9,7 +9,6 @@ import com.netflix.hystrix.strategy.HystrixPlugins
 import nl.grons.metrics.scala.Implicits.functionToMetricFilter
 import org.apache.commons.math3.stat.descriptive.SynchronizedSummaryStatistics
 import org.apache.commons.math3.stat.descriptive.rank.Percentile
-import sk.httpclient.app.Record
 
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.Try

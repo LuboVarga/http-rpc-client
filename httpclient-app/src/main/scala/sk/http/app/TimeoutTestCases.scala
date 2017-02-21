@@ -6,7 +6,6 @@ import com.netflix.hystrix.Hystrix
 import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher
 import com.netflix.hystrix.strategy.HystrixPlugins
 import io.netty.util.ResourceLeakDetector
-import sk.httpclient.app.Record
 
 /**
   * https://confluence.nike.sk/display/VVP/RPC+projekt?focusedCommentId=11535760#comment-11535760

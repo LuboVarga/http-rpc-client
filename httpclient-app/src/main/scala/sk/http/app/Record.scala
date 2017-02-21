@@ -44,9 +44,9 @@ class Record() extends Getable {
     return "Record{" + "name='" + name + '\'' + ", age=" + age + ", city='" + city + '\'' + '}'
   }
 
-  def toMap: util.Map[String, String] = {
-    val map: util.Map[String, String] = new util.HashMap[String, String]
-    map.put("age", "132")
+  def toMap: java.util.Map[String, String] = {
+    val map: java.util.Map[String, String] = new java.util.HashMap[String, String]
+    map.put("age", "" + this.age)
     return map
   }
 }

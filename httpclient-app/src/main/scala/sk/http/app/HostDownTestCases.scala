@@ -2,8 +2,6 @@ package sk.http.app
 
 import java.util.concurrent.TimeUnit
 
-import sk.httpclient.app.Record
-
 /**
   * https://confluence.nike.sk/display/VVP/RPC+projekt?focusedCommentId=11535760#comment-11535760
   *

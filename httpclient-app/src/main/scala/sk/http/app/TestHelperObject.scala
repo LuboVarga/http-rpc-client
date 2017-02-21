@@ -6,7 +6,6 @@ import com.codahale.metrics.{ConsoleReporter, Metric}
 import com.netflix.hystrix.contrib.codahalemetricspublisher.HystrixCodaHaleMetricsPublisher
 import com.netflix.hystrix.strategy.HystrixPlugins
 import nl.grons.metrics.scala.Implicits.functionToMetricFilter
-import sk.httpclient.app.Record
 import sk.httpclient.client.Getable
 
 import scala.collection.JavaConversions._
