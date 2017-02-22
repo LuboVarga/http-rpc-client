@@ -1,4 +1,4 @@
-package sk.http.app
+package app
 
 import java.util.concurrent.TimeUnit
 
