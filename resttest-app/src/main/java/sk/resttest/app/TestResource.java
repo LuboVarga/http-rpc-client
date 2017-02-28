@@ -9,7 +9,7 @@ import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@Path("/test")
+@Path("/rpc/test")
 public class TestResource {
     private static final Logger LOG = LoggerFactory.getLogger(TestResource.class);
     private static AtomicInteger recordPostCount = new AtomicInteger(0);

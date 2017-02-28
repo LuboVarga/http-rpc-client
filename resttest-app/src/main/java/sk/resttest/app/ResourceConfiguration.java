@@ -8,5 +8,6 @@ public class ResourceConfiguration extends ResourceConfig {
         register(TestResource.class);
         register(ExitResource.class);
         register(IndexResource.class);
+        register(RpcBaseController.class);
     }
 }
